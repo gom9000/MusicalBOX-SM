@@ -1,0 +1,21 @@
+# MusicalBOX SM: the sound engine, started at boot.
+# Installed by system/install-services.sh (@USER@ and @DIR@ filled in there).
+[Unit]
+Description=MusicalBOX SM: sound engine
+After=sound.target
+
+[Service]
+User=@USER@
+SupplementaryGroups=audio dialout gpio
+WorkingDirectory=@DIR@
+# CPU at full speed: no frequency changes in the middle of a song (runs as root: "+").
+ExecStartPre=+/bin/sh -c 'for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance > $g; done'
+ExecStart=@DIR@/build/mbx-engine --config @DIR@/config
+LimitRTPRIO=95
+LimitMEMLOCK=infinity
+Nice=-10
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

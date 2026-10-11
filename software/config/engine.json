@@ -1,0 +1,13 @@
+{
+  "$schema": "schema/engine.schema.json",
+  "version": 1,
+  "audio": {
+    "device": "",
+    "sample_rate": 48000,
+    "period_frames": 128,
+    "periods": 3
+  },
+  "master_volume_db": -6,
+  "polyphony": 64,
+  "midi_channel": "omni"
+}

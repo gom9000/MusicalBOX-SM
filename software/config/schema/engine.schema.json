@@ -1,0 +1,205 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MusicalBOX SM engine.json",
+  "description": "System parameters. Every field is optional; command-line options override them.",
+  "type": "object",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^_": {}
+  },
+  "required": [
+    "version"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^_": {}
+      },
+      "properties": {
+        "device": {
+          "type": "string",
+          "default": "",
+          "description": "part of the output device name (see mbx-engine --list-devices); empty = system default"
+        },
+        "sample_rate": {
+          "type": "integer",
+          "minimum": 22050,
+          "maximum": 192000,
+          "default": 48000
+        },
+        "period_frames": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 4096,
+          "default": 128,
+          "description": "audio block: smaller = less latency, more CPU"
+        },
+        "periods": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8,
+          "default": 3
+        }
+      }
+    },
+    "master_volume_db": {
+      "type": "number",
+      "minimum": -90,
+      "maximum": 6,
+      "default": -6,
+      "description": "master volume at power on"
+    },
+    "polyphony": {
+      "type": "integer",
+      "minimum": 8,
+      "maximum": 256,
+      "default": 64,
+      "description": "voices sounding at the same time; a note uses one voice per layer"
+    },
+    "max_layers": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8,
+      "default": 3,
+      "description": "instruments per program, stacked or split"
+    },
+    "ram_budget_percent": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 95,
+      "default": 70,
+      "description": "share of physical RAM for samples; 0 = no limit"
+    },
+    "midi_channel": {
+      "oneOf": [
+        {
+          "const": "omni"
+        },
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        }
+      ],
+      "default": "omni"
+    },
+    "midi_serial": {
+      "type": "string",
+      "default": "/dev/serial0",
+      "description": "serial port of the DIN MIDI input (needs dtoverlay=midi-uart0); empty = disabled. USB MIDI is always on"
+    },
+    "control_socket": {
+      "type": "string",
+      "default": "/tmp/mbx-engine.sock",
+      "description": "local socket for mbx-control (web editor); empty = disabled"
+    },
+    "panel": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^_": {}
+      },
+      "description": "front panel on the GPIO, handled by mbx-control (BCM numbers)",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "panic": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 27,
+          "default": 22,
+          "description": "Panic button, to GND"
+        },
+        "fx_switch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 27,
+          "default": 23,
+          "description": "effect switch footswitch (momentary), to GND"
+        },
+        "wifi_switch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 27,
+          "default": 5,
+          "description": "Wi-Fi switch to GND: closed = Wi-Fi off"
+        },
+        "wifi_led": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 27,
+          "default": 6,
+          "description": "Wi-Fi LED (with resistor)"
+        },
+        "status_led": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 27,
+          "default": 24,
+          "description": "status LED: slow blink loading, steady ready, fast blink error"
+        },
+        "hotspot": {
+          "type": "string",
+          "default": "MusicalBOX-SM",
+          "description": "NetworkManager connection of the Pi's own network"
+        },
+        "loading_timeout_s": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 900,
+          "default": 180,
+          "description": "engine running this long without answering = error"
+        }
+      }
+    },
+    "record_folder": {
+      "type": "string",
+      "default": "/tmp",
+      "description": "folder of the recordings (r in the console, web editor); /tmp is in RAM on a read-only system"
+    },
+    "dac_mute": {
+      "type": "object",
+      "description": "mute pins (XSMT) of the two PCM5102A DACs: the program's output A / B / AB chooses which one sounds",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^_": {}
+      },
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "false = the engine does not touch the GPIOs (XSMT bridged to 3V3 on the module)"
+        },
+        "a": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 53,
+          "default": 16,
+          "description": "BCM GPIO of DAC A's XSMT"
+        },
+        "b": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 53,
+          "default": 17,
+          "description": "BCM GPIO of DAC B's XSMT"
+        },
+        "chip": {
+          "type": "string",
+          "default": "",
+          "description": "GPIO chip (gpiochip0...); empty = the Raspberry Pi's own"
+        }
+      }
+    }
+  }
+}

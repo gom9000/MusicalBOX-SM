@@ -1,0 +1,13 @@
+{
+  "$schema": "schema/instruments.schema.json",
+  "version": 1,
+  "media_root": "../media",
+  "instruments": [
+    {
+      "id": "TEST_TONE",
+      "name": "Test tone",
+      "path": "test/tone",
+      "files": "{note}.wav"
+    }
+  ]
+}

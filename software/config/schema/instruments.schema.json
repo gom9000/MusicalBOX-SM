@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MusicalBOX SM instruments.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "instruments"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1
+    },
+    "media_root": {
+      "type": "string",
+      "default": "../media",
+      "description": "relative to this file's folder"
+    },
+    "instruments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "patternProperties": {
+          "^_": {}
+        },
+        "required": [
+          "id",
+          "path",
+          "files"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "description": "folder relative to media_root"
+          },
+          "files": {
+            "type": "string",
+            "description": "file name pattern: {note} = MIDI number, {name} = note name (C3 = 60), {vel} = velocity layer index, * = anything"
+          },
+          "velocity_layers": {
+            "description": "velocity ranges of {vel}: an array with the lowest velocity of each index 1, 2, 3... in the file names (increasing), or an object mapping a text label in the file names to its lowest velocity, e.g. {\"PP\": 1, \"MP\": 45, \"F\": 85, \"FF\": 112}",
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 127
+                },
+                "minItems": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 127
+                },
+                "minProperties": 1
+              }
+            ]
+          },
+          "fill": {
+            "enum": [
+              "nearest",
+              "none"
+            ],
+            "default": "nearest"
+          },
+          "name_octave": {
+            "enum": [
+              "C3",
+              "C4"
+            ],
+            "default": "C3",
+            "description": "octave convention of {name}: C3 = middle C (Yamaha) or C4 = middle C (scientific pitch, most libraries). tools/check_pitch.py tells which one a folder uses"
+          }
+        }
+      }
+    }
+  }
+}

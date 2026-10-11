@@ -1,0 +1,15 @@
+{
+  "$schema": "schema/programs.schema.json",
+  "version": 1,
+  "programs": [
+    {
+      "id": "test_tone",
+      "name": "Test tone",
+      "loop": "on",
+      "adsr": { "attack_ms": 5, "release_ms": 200 },
+      "layers": [
+        { "instrument": "TEST_TONE" }
+      ]
+    }
+  ]
+}

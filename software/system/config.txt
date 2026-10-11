@@ -1,0 +1,24 @@
+# MusicalBOX SM - lines to add to /boot/firmware/config.txt
+# Also remove "console=serial0,115200" from /boot/firmware/cmdline.txt (MIDI DIN on the UART).
+
+# Audio: only the I2S DAC(s)
+dtparam=audio=off
+dtoverlay=vc4-kms-v3d,noaudio
+
+# Sound card in use: PCM5102A DAC module(s) on I2S (GPIO18 BCK, 19 LRCK, 21 DIN).
+# Mute pins (XSMT) on GPIO16 (DAC A) and GPIO17 (DAC B), driven by mbx-engine.
+dtoverlay=hifiberry-dac
+
+# Front panel shift registers
+dtparam=spi=on
+
+# MIDI DIN on UART0 (PL011): the application asks for 38400 baud and gets 31250
+enable_uart=1
+dtoverlay=disable-bt
+dtoverlay=midi-uart0
+
+# Fan, if any: For example on GPIO27 (physical pin 13):
+#dtoverlay=gpio-fan,gpiopin=27,temp=80000
+
+# Safe shutdown button on GPIO26 (to GND)
+dtoverlay=gpio-shutdown,gpio_pin=26

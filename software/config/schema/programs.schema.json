@@ -1,0 +1,909 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MusicalBOX SM programs.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "programs"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1
+    },
+    "programs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "patternProperties": {
+          "^_": {}
+        },
+        "required": [
+          "id",
+          "layers"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "output": {
+            "enum": [
+              "A",
+              "B",
+              "AB"
+            ],
+            "default": "A"
+          },
+          "gain_db": {
+            "type": "number",
+            "minimum": -60,
+            "maximum": 12,
+            "default": 0,
+            "description": "dB"
+          },
+          "adsr": {
+            "type": "object",
+            "additionalProperties": false,
+            "patternProperties": {
+              "^_": {}
+            },
+            "description": "Envelope. Attack is linear, decay and release are exponential.",
+            "properties": {
+              "attack_ms": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000,
+                "default": 2
+              },
+              "decay_ms": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 30000,
+                "default": 0
+              },
+              "sustain": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "default": 1
+              },
+              "release_ms": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 30000,
+                "default": 150
+              }
+            }
+          },
+          "velocity": {
+            "type": "object",
+            "additionalProperties": false,
+            "patternProperties": {
+              "^_": {}
+            },
+            "description": "off: every note plays at full level with the top sample layer. on: velocity quantised to 'levels' steps; the step chooses the sample layer and the gain.",
+            "properties": {
+              "mode": {
+                "enum": [
+                  "on",
+                  "off"
+                ],
+                "default": "off"
+              },
+              "levels": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 127,
+                "default": 127
+              },
+              "curve": {
+                "enum": [
+                  "linear",
+                  "exp"
+                ],
+                "default": "linear",
+                "description": "exp = 40 dB range"
+              }
+            }
+          },
+          "loop": {
+            "oneOf": [
+              {
+                "enum": [
+                  "on",
+                  "off"
+                ]
+              },
+              {
+                "type": "boolean"
+              }
+            ],
+            "default": "off",
+            "description": "on = organ mode: held notes repeat the WAV loop points"
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "patternProperties": {
+                "^_": {}
+              },
+              "required": [
+                "instrument"
+              ],
+              "properties": {
+                "instrument": {
+                  "type": "string",
+                  "description": "id from instruments.json"
+                },
+                "keys": {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 127
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "^[A-Ga-g](#|b)?-?[0-9]{1,2}$"
+                      }
+                    ],
+                    "description": "MIDI note number, or a name with C3 = 60 (\"C3\", \"F#2\", \"Bb1\")"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "description": "[low, high], default whole keyboard"
+                },
+                "transpose": {
+                  "type": "integer",
+                  "minimum": -48,
+                  "maximum": 48,
+                  "default": 0,
+                  "description": "semitones"
+                },
+                "gain_db": {
+                  "type": "number",
+                  "minimum": -60,
+                  "maximum": 12,
+                  "default": 0,
+                  "description": "dB"
+                },
+                "adsr": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "patternProperties": {
+                    "^_": {}
+                  },
+                  "description": "Envelope. Attack is linear, decay and release are exponential.",
+                  "properties": {
+                    "attack_ms": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 10000,
+                      "default": 2
+                    },
+                    "decay_ms": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 30000,
+                      "default": 0
+                    },
+                    "sustain": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "default": 1
+                    },
+                    "release_ms": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 30000,
+                      "default": 150
+                    }
+                  }
+                },
+                "velocity": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "patternProperties": {
+                    "^_": {}
+                  },
+                  "description": "off: every note plays at full level with the top sample layer. on: velocity quantised to 'levels' steps; the step chooses the sample layer and the gain.",
+                  "properties": {
+                    "mode": {
+                      "enum": [
+                        "on",
+                        "off"
+                      ],
+                      "default": "off"
+                    },
+                    "levels": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 127,
+                      "default": 127
+                    },
+                    "curve": {
+                      "enum": [
+                        "linear",
+                        "exp"
+                      ],
+                      "default": "linear",
+                      "description": "exp = 40 dB range"
+                    }
+                  }
+                },
+                "loop": {
+                  "oneOf": [
+                    {
+                      "enum": [
+                        "on",
+                        "off"
+                      ]
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ],
+                  "default": "off",
+                  "description": "on = organ mode: held notes repeat the WAV loop points"
+                }
+              }
+            },
+            "minItems": 1,
+            "description": "instruments of the program, stacked or split by key range; at most max_layers of engine.json (default 3), extra ones are ignored"
+          },
+          "fx": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "patternProperties": {
+                "^_": {}
+              },
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "enum": [
+                    "tone",
+                    "echo",
+                    "chorus",
+                    "phaser",
+                    "leslie",
+                    "tremolo",
+                    "fuzz",
+                    "width",
+                    "room"
+                  ]
+                },
+                "params": {
+                  "type": "object",
+                  "description": "parameters of the effect; missing ones take the default (see README, Effetti)"
+                },
+                "bypass": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "switch": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "prefixItems": [
+                    {
+                      "type": "string",
+                      "description": "parameter of this effect, or \"bypass\""
+                    },
+                    {
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ],
+                      "description": "value A: when the program is selected"
+                    },
+                    {
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ],
+                      "description": "value B: after a press of the switch"
+                    }
+                  ],
+                  "description": "[\"parameter\", A, B]: the program's switch button moves the parameter between A and B, e.g. [\"speed\", \"slow\", \"fast\"] or [\"bypass\", false, true]"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "tone"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "properties": {
+                          "low_cut_hz": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1000,
+                            "default": 0,
+                            "description": "high-pass, 0 = off"
+                          },
+                          "bass_db": {
+                            "type": "number",
+                            "minimum": -18,
+                            "maximum": 18,
+                            "default": 0,
+                            "description": "low shelf gain"
+                          },
+                          "bass_hz": {
+                            "type": "number",
+                            "minimum": 30,
+                            "maximum": 500,
+                            "default": 120,
+                            "description": "low shelf frequency"
+                          },
+                          "mid_db": {
+                            "type": "number",
+                            "minimum": -18,
+                            "maximum": 18,
+                            "default": 0,
+                            "description": "mid peak gain"
+                          },
+                          "mid_hz": {
+                            "type": "number",
+                            "minimum": 200,
+                            "maximum": 5000,
+                            "default": 1000,
+                            "description": "mid peak frequency"
+                          },
+                          "treble_db": {
+                            "type": "number",
+                            "minimum": -18,
+                            "maximum": 18,
+                            "default": 0,
+                            "description": "high shelf gain"
+                          },
+                          "treble_hz": {
+                            "type": "number",
+                            "minimum": 1000,
+                            "maximum": 12000,
+                            "default": 3500,
+                            "description": "high shelf frequency"
+                          },
+                          "high_cut_hz": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 20000,
+                            "default": 0,
+                            "description": "low-pass, 0 = off"
+                          },
+                          "gain_db": {
+                            "type": "number",
+                            "minimum": -24,
+                            "maximum": 12,
+                            "default": 0,
+                            "description": "output level"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "echo"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "properties": {
+                          "time_ms": {
+                            "type": "number",
+                            "minimum": 20,
+                            "maximum": 2000,
+                            "default": 350,
+                            "description": "delay time"
+                          },
+                          "feedback": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 0.95,
+                            "default": 0.35,
+                            "description": "repeats: 0 = one echo"
+                          },
+                          "mix": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.3,
+                            "description": "echo level added to the dry sound"
+                          },
+                          "tone_hz": {
+                            "type": "number",
+                            "minimum": 500,
+                            "maximum": 12000,
+                            "default": 2800,
+                            "description": "repeats get darker: low-pass in the loop"
+                          },
+                          "low_cut_hz": {
+                            "type": "number",
+                            "minimum": 20,
+                            "maximum": 1000,
+                            "default": 120,
+                            "description": "repeats get thinner: high-pass in the loop"
+                          },
+                          "wow": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.3,
+                            "description": "tape speed wobble"
+                          },
+                          "drive": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.3,
+                            "description": "tape saturation of the repeats"
+                          },
+                          "ping_pong": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "repeats alternate left and right"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "chorus"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "properties": {
+                          "mode": {
+                            "enum": [
+                              "ce2",
+                              "ensemble"
+                            ],
+                            "default": "ce2",
+                            "description": "ce2 = classic chorus pedal, ensemble = string-ensemble chorus"
+                          },
+                          "rate_hz": {
+                            "type": "number",
+                            "minimum": 0.05,
+                            "maximum": 8,
+                            "default": 0.8,
+                            "description": "speed (default 0.8 ce2, 0.6 ensemble)"
+                          },
+                          "depth": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.5,
+                            "description": "amount of modulation"
+                          },
+                          "mix": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.5,
+                            "description": "0 = dry, 1 = only the modulated sound (default 0.5 ce2, 0.7 ensemble)"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "phaser"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "properties": {
+                          "rate_hz": {
+                            "type": "number",
+                            "minimum": 0.05,
+                            "maximum": 5,
+                            "default": 0.5,
+                            "description": "sweep speed"
+                          },
+                          "depth": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 1,
+                            "description": "sweep width"
+                          },
+                          "feedback": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 0.8,
+                            "default": 0.2,
+                            "description": "resonance, 0 = no feedback (the softest sweep)"
+                          },
+                          "mix": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.5,
+                            "description": "0.5 = classic phaser"
+                          },
+                          "stages": {
+                            "type": "integer",
+                            "enum": [
+                              2,
+                              4,
+                              6,
+                              8,
+                              10,
+                              12
+                            ],
+                            "default": 4
+                          },
+                          "stereo": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "right side 90 degrees apart"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "leslie"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "properties": {
+                          "speed": {
+                            "enum": [
+                              "slow",
+                              "fast"
+                            ],
+                            "default": "slow",
+                            "description": "fixed rotor speed: slow = chorale, fast = tremolo"
+                          },
+                          "depth": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 2,
+                            "default": 1,
+                            "description": "Doppler, amplitude and tone change of the rotors; 1 = a real cabinet, up to 2 for more"
+                          },
+                          "drive": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0,
+                            "description": "amplifier overdrive"
+                          },
+                          "mix": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 1,
+                            "description": "1 = only the speaker"
+                          },
+                          "spread": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.8,
+                            "description": "distance between the two virtual microphones: stereo width"
+                          },
+                          "cabinet": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 2,
+                            "default": 1,
+                            "description": "reflections of the cabinet and the room heard by the microphones: width and swirl of a recorded rotary speaker; 0 = direct sound only"
+                          },
+                          "top_hz": {
+                            "type": "number",
+                            "minimum": 1000,
+                            "maximum": 20000,
+                            "default": 2800,
+                            "description": "treble limit of the horn and of the recording; 18000 or more = no limit"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "tremolo"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "properties": {
+                          "rate_hz": {
+                            "type": "number",
+                            "minimum": 0.1,
+                            "maximum": 20,
+                            "default": 5,
+                            "description": "speed"
+                          },
+                          "depth": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.5,
+                            "description": "1 = down to silence"
+                          },
+                          "shape": {
+                            "enum": [
+                              "sine",
+                              "triangle",
+                              "square"
+                            ],
+                            "default": "sine"
+                          },
+                          "stereo": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "pan tremolo"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "fuzz"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "properties": {
+                          "drive": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.6,
+                            "description": "amount of fuzz"
+                          },
+                          "octave": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.5,
+                            "description": "octave-up generator of an octave-fuzz pedal"
+                          },
+                          "bias": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.2,
+                            "description": "asymmetric clipping: rougher, more even harmonics"
+                          },
+                          "tone_hz": {
+                            "type": "number",
+                            "minimum": 500,
+                            "maximum": 10000,
+                            "default": 2500,
+                            "description": "low-pass after the fuzz"
+                          },
+                          "low_cut_hz": {
+                            "type": "number",
+                            "minimum": 20,
+                            "maximum": 1000,
+                            "default": 150,
+                            "description": "high-pass before the fuzz: tighter bass"
+                          },
+                          "blend": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 1,
+                            "description": "0 = clean, 1 = only fuzz"
+                          },
+                          "level_db": {
+                            "type": "number",
+                            "minimum": -24,
+                            "maximum": 12,
+                            "default": 0,
+                            "description": "output level of the fuzz"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "width"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "properties": {
+                          "amount": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.5,
+                            "description": "how wide"
+                          },
+                          "time_ms": {
+                            "type": "number",
+                            "minimum": 3,
+                            "maximum": 30,
+                            "default": 12,
+                            "description": "delay of the side signal"
+                          },
+                          "low_cut_hz": {
+                            "type": "number",
+                            "minimum": 50,
+                            "maximum": 2000,
+                            "default": 250,
+                            "description": "below this the sound stays in the centre"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "room"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "properties": {
+                          "level": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1.5,
+                            "default": 0.5,
+                            "description": "how much room is added to the dry sound"
+                          },
+                          "time_s": {
+                            "type": "number",
+                            "minimum": 0.2,
+                            "maximum": 4,
+                            "default": 0.7,
+                            "description": "reverberation time (60 dB down)"
+                          },
+                          "damp_hz": {
+                            "type": "number",
+                            "minimum": 1000,
+                            "maximum": 16000,
+                            "default": 3000,
+                            "description": "the tail gets darker above this"
+                          },
+                          "predelay_ms": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 80,
+                            "default": 5,
+                            "description": "gap before the room answers"
+                          },
+                          "low_cut_hz": {
+                            "type": "number",
+                            "minimum": 20,
+                            "maximum": 1000,
+                            "default": 250,
+                            "description": "below this the room is not fed (no boom)"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "description": "effects of the program, applied in this order to the sum of its layers"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#151413">
+<title>MusicalBOX SM</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">MusicalBOX <b>SM</b></div>
+  <div class="status" id="status">
+    <span class="led" id="midiLed" title="MIDI"></span>
+    <span id="stProgram">…</span>
+  </div>
+  <div class="meters">
+    <span id="stVoices" title="voci">0 v</span>
+    <span id="stLoad" title="CPU audio">0%</span>
+    <span class="peak" title="picco"><i id="stPeak"></i></span>
+  </div>
+</header>
+
+<div class="dirty" id="dirtyBar" hidden>
+  <span>Modifiche non salvate</span>
+  <button class="ghost" id="btnRevert">Annulla</button>
+  <button class="primary" id="btnSave">Salva</button>
+</div>
+<div class="offline" id="offlineBar" hidden>Motore non raggiungibile: riprovo…</div>
+
+<main id="view"></main>
+
+<div class="keyboard" id="keyboard" hidden>
+  <div class="kb-tools">
+    <button class="ghost small" id="kbDown">−8va</button>
+    <span id="kbOct">C3</span>
+    <button class="ghost small" id="kbUp">+8va</button>
+    <label class="kb-vel">vel <input type="range" id="kbVel" min="1" max="127" value="100"></label>
+    <button class="ghost small" id="kbHide">✕</button>
+  </div>
+  <div class="keys" id="keys"></div>
+</div>
+
+<nav class="tabs">
+  <button data-tab="panel" class="on">Pannello</button>
+  <button data-tab="sounds">Suoni</button>
+  <button data-tab="instruments">Strumenti</button>
+  <button data-tab="system">Sistema</button>
+</nav>
+
+<div class="sheet-bg" id="sheetBg" hidden></div>
+<div class="sheet" id="sheet" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MusicalBOX SM presets.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "presets"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "startup": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 128,
+      "description": "preset selected at power on"
+    },
+    "presets": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^([1-9]|[1-9][0-9]|1[01][0-9]|12[0-8])$": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "program id (or null: not defined); preset N is selected by MIDI Program Change N-1"
+        }
+      }
+    }
+  }
+}

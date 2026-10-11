@@ -1,0 +1,16 @@
+# build
+build/
+build-*/
+cmake-build-*/
+*.o
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# renders and editors
+*.wav
+.vscode/
+.idea/
+.DS_Store
