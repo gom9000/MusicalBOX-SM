@@ -35,9 +35,9 @@ Voice* VoicePool::allocate(double engineRate) {
     return fading;
 }
 
-void VoicePool::render(int bus, float* left, float* right, int frames) {
+void VoicePool::render(int bus, float* left, float* right, int frames, const VoiceMod& mod) {
     for (auto& voice : voices_)
-        if (voice.active() && voice.bus == bus) voice.render(left, right, frames);
+        if (voice.active() && voice.bus == bus) voice.render(left, right, frames, mod);
 }
 
 bool VoicePool::busActive(int bus) const {

@@ -444,6 +444,7 @@ int main(int argc, char** argv) {
     engine->setMasterGainDb(settings.masterVolumeDb);
     engine->setPolyphony(settings.polyphony);
     engine->setMidiChannel(settings.midiChannel);
+    engine->setPitchBendRange(settings.pitchBendRange);
     BankManager banks(*engine, store, settings.maxLayers);
     std::shared_ptr<const ProgramBank> startBank;
     Program test;

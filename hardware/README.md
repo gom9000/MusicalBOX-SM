@@ -84,27 +84,66 @@ GPIO14 and GPIO15 belong to the UART: no fan (`gpio-fan`) or anything else on th
 
 ## Front panel
 
-Buttons and switch to GND (Pi internal pull-ups), LEDs with 330 Ω to GND.
+### Buttons and LEDs
+
+Buttons on **74HC165** shift registers, LEDs on **74HC595**, both on SPI0 with a shared latch.
+Each 165 + 595 pair adds 8 buttons and 8 LEDs (3 pairs = 24, 4 pairs = 32). Supply 3.3 V.
+
+| Signal | Raspberry Pi | 74HC165 | 74HC595 |
+| --- | --- | --- | --- |
+| Clock | SCLK, GPIO11 (23) | CLK (2) | SRCLK (11) |
+| Data in | MISO, GPIO9 (21) | QH (9) of the first 165 | — |
+| Data out | MOSI, GPIO10 (19) | — | SER (14) of the first 595 |
+| Latch | GPIO25 (22) | SH/LD (1) | RCLK (12) |
+| Output enable | GPIO12 (32) | — | OE (13), with 10 kΩ to 3.3 V |
+| — | — | CLK INH (15) to GND | SRCLR (10) to 3.3 V |
+
+OE (13) of all the 595s goes to GPIO12, with a 10 kΩ pull-up: the LEDs stay dark from power on
+until the panel software has written the chain, and a PWM on OE sets their brightness
+(`panel.chain.brightness`).
+
+Chaining: QH (9) of each 165 goes to SER (10) of the next one; QH' (9) of each 595 goes to
+SER (14) of the next one. The first 165 is the one on MISO, the first 595 the one on MOSI.
+
+Numbering: button 1 is input A of the first 165, button 8 its input H, button 9 input A of
+the second 165, and so on. LED 1 is output QA of the first 595, in the same order.
+
+- Buttons to GND, each input with 10 kΩ to 3.3 V.
+- LEDs from the 595 outputs to GND, each with a resistor (1 kΩ at 3.3 V; low-current LEDs).
+- 100 nF on the supply of each chip.
+
+What each button does and what each LED shows is set in `engine.json`
+(`panel.chain.buttons` and `panel.chain.leds`, see `software/control/README.md`). Default:
+button 1 ok, 2 back, 3 Panic, 4 Wi-Fi, 5–24 presets 1–20; each LED shows the state of its
+button.
+
+The status LED is not on the chain: it has its own GPIO, so it shows the engine state even
+when the chain is not working.
+
+### Encoder, footswitch and status LED
 
 | Function | GPIO (pin) |
 | --- | --- |
-| Panic | 22 (15) |
+| Volume encoder A | 5 (29) |
+| Volume encoder B | 6 (31) |
 | Effect switch footswitch (jack, momentary) | 23 (16) |
-| Wi-Fi switch (closed = Wi-Fi off) | 5 (29) |
-| Wi-Fi LED | 6 (31) |
-| Status LED | 24 (18) |
+| Status LED (330 Ω to GND) | 24 (18) |
 | GND | 14, 20, 30, 34, 39 |
 
-Footswitch on a jack: 1 kΩ in series towards the GPIO and 100 nF to GND near the Pi, against
-noise and discharges on the long cable.
+Encoder and footswitch to GND (Pi internal pull-ups). The encoder push button goes on the
+chain like the other buttons (default: button 1, "ok"). Footswitch on a jack: 1 kΩ in series
+towards the GPIO and 100 nF to GND near the Pi, against noise and discharges on the long cable.
 
 ## GPIO summary
 
 | GPIO (pin) | Use |
 | --- | --- |
-| 5, 6, 22, 23, 24 | Front panel |
+| 5, 6 (29, 31) | Volume encoder |
+| 8, 9, 10, 11 (24, 21, 19, 23), 25 (22) | Button and LED chain (SPI0 + latch; CE0, GPIO8, is taken by the SPI driver) |
+| 12 (32) | LED output enable and brightness (595 OE) |
 | 14, 15 (8, 10) | UART, MIDI DIN |
 | 16, 17 (36, 11) | DAC A and B mute |
 | 18, 19, 21 (12, 35, 40) | I2S |
-| 8–11, 25 | SPI and latch for front-panel expansion (shift registers) |
+| 23 (16) | Effect switch footswitch |
+| 24 (18) | Status LED |
 | 26 (37) | Shutdown button, to GND |

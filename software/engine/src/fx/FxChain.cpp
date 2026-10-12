@@ -1,6 +1,7 @@
 #include "fx/FxChain.h"
 
 #include "core/Constants.h"
+#include "fx/Effects.h"
 #include "sampler/Program.h"
 
 #include <algorithm>
@@ -98,6 +99,24 @@ std::shared_ptr<FxChain> FxChain::build(const std::vector<FxDef>& defs, const st
         if (def.bypass) continue;
         const std::string fxWhere = where + " fx " + std::to_string(index);
         const json params = def.paramsJson.empty() ? json::object() : json::parse(def.paramsJson);
+
+        if (def.type == "motor") {  // drives the voices: one per program, switched by itself
+            if (chain->motor_) {
+                warnings.push_back(fxWhere + " (motor): only one motor per program - ignored");
+                continue;
+            }
+            auto effect = createEffect(def.type, params, fxWhere, warnings);
+            if (!effect) continue;
+            if (!def.switchParam.empty()) {
+                if (effect->configureSwitch(def.switchParam, json::parse(def.switchA), json::parse(def.switchB)))
+                    chain->hasSwitch_ = true;
+                else
+                    warnings.push_back(fxWhere + " (motor) switch: must be [\"state\", \"on\", \"off\"] (or off, on) - ignored");
+            }
+            chain->motor_ = static_cast<Motor*>(effect.get());
+            chain->effects_.push_back(std::move(effect));
+            continue;
+        }
 
         if (def.switchParam.empty()) {
             if (auto effect = createEffect(def.type, params, fxWhere, warnings))

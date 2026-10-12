@@ -13,6 +13,8 @@ struct FxDef;
 // The effects of one program, in the order written in programs.json.
 // Same threading rules as Effect: build and prepare before the audio starts,
 // reset, setSwitch and process in the audio thread.
+class Motor;
+
 class FxChain {
 public:
     // Effects with "bypass": true and unknown types are left out (with a warning).
@@ -28,12 +30,17 @@ public:
     void setSwitch(bool positionB, bool immediate);
     bool hasSwitch() const { return hasSwitch_; }
 
+    // The program's motor ("motor" in fx), nullptr if none: the engine reads
+    // its speed for the voices.
+    Motor* motor() const { return motor_; }
+
     std::size_t size() const { return effects_.size(); }
     bool prepared() const { return prepared_; }
 
 private:
     std::vector<std::unique_ptr<Effect>> effects_;
     bool hasSwitch_ = false;
+    Motor* motor_ = nullptr;
     bool prepared_ = false;
 };
 

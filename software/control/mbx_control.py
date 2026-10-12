@@ -428,7 +428,7 @@ def main():
     ap.add_argument("--bind", default="0.0.0.0")
     ap.add_argument("--config", default=str(ROOT / "config"), help="folder with programs.json, presets.json...")
     ap.add_argument("--socket", default=None, help="engine control socket (default: from engine.json)")
-    ap.add_argument("--no-panel", action="store_true", help="do not use the GPIO front panel")
+    ap.add_argument("--no-panel", action="store_true", help="do not use the front panel (buttons, encoder, LEDs)")
     args = ap.parse_args()
 
     config = Config(args.config)

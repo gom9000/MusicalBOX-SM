@@ -6,17 +6,17 @@
 
 ## Features
 - **Real-Time C++20 Engine**: Low latency audio processing with voice management, ADSR envelopes, sample looping, and velocity mapping.
-- **Integrated Effects Chain**: Built-in effects per program (`leslie`, `fuzz`, `chorus`, `phaser`, `echo`, `room`, `tone`, `width`, `tremolo`) featuring dynamic parameters and live switching.
-- **MIDI Connectivity**: Native support for USB MIDI controllers and hardware MIDI DIN interfaces via the Raspberry Pi dedicated UART.
+- **Integrated Effects Chain**: Built-in effects per program (`leslie`, `fuzz`, `chorus`, `phaser`, `echo`, `room`, `tone`, `width`, `tremolo`, plus the organ `motor`) featuring dynamic parameters and live switching.
+- **MIDI Connectivity**: Native support for USB MIDI controllers and hardware MIDI DIN interfaces via the Raspberry Pi dedicated UART. Notes, sustain, pitch bend, Program Change, all sound off / all notes off.
 - **Integrated Web Editor**: Mobile-friendly configuration interface accessible over Wi-Fi (via the Pi local access point) to tweak presets, programs, layers, and effects on the fly.
 - **Samples**: Supports 8, 16, 24, or 32-bit WAV files (mono or stereo) at any sample rate, utilizing loop points. Multiple velocity layers per note are supported via numbers or labels in filenames.
 - **Sounds (Programs)**: Up to 3 layers, layered or split by key zones, featuring transposition, volume, ADSR envelope, velocity curves (linear or exponential), and organ mode (held notes repeat the sample loop). Layers inherit parameters from the program unless explicitly overridden.
-- **Per-Program Effects**: Equalizer, tape echo, chorus/ensemble, phaser, rotary speaker, tremolo, octave fuzz, stereo width, and room reverb. Each sound includes a switch that toggles one or more parameters with a single button press (e.g., rotary speaker speed).
+- **Per-Program Effects**: Equalizer, tape echo, chorus/ensemble, phaser, rotary speaker, tremolo, octave fuzz, stereo width, room reverb, and an organ motor that slows the notes down to silence and back. Each sound includes a switch that toggles one or more parameters with a single button press (e.g., rotary speaker speed).
 - **Up to 128 Presets**: as many as defined in `presets.json`, recalled via MIDI Program Change (PC 0–127 → presets 1–128).
 - **Audio Output**: 64 voices (configurable), 128-sample blocks (~8 ms buffer), master volume with integrated limiter to eliminate clipping on dense chords.
 - **Dual Outputs**: One or two PCM5102A DACs. Each program selects output routing (A, B, or both). DACs remain muted until the audio engine is fully initialized.
 - **Web Editor**: Smartphone-accessible Wi-Fi interface for managing keys, sounds, layers, and effects with immediate preview and automatic backup generation on save.
-- **Front Panel**: Panic button, effect switch footswitch, Wi-Fi toggle, status LED, and Wi-Fi LED.
+- **Front Panel**: up to 64 buttons with LEDs on shift registers (presets, Panic, Wi-Fi, menu keys, freely assignable), volume encoder, effect switch footswitch, status LED. Wi-Fi off at power on, turned on from the panel.
 - **Recording**: Direct stereo WAV recording of live performances without external cabling.
 - **Read-Only System**: Safely power down without risking SD card corruption.
 
@@ -25,7 +25,7 @@
 - Raspberry Pi 4.
 - Three PCM5102A I2S DAC modules (Outputs A, B, and Headphone).
 - Optoisolated MIDI DIN interface connected via UART (GPIO15).
-- Panel interface via GPIO.
+- Front panel: buttons and LEDs on 74HC165 / 74HC595 shift registers (SPI), volume encoder and footswitch on GPIO.
 
 Wiring, jumpers and parts are described in [hardware/README.md](hardware/README.md).
 
@@ -95,13 +95,14 @@ Validate the configuration structure anytime by running `./build/mbx-engine --ch
 | `max_layers` | 3 | Maximum layers per program |
 | `ram_budget_percent` | 70 | RAM quota allocated for samples; 0 = unlimited |
 | `midi_channel` | `"omni"` | MIDI channel 1–16 or `"omni"` |
+| `pitch_bend_range` | 2 | Pitch bend range in semitones, up and down; 0 = ignored |
 | `midi_serial` | `"/dev/serial0"` | MIDI DIN serial port; `""` = disabled |
 | `record_folder` | `"/tmp"` | Target directory for audio recordings |
 | `control_socket` | `"/tmp/mbx-engine.sock"` | Unix socket for the web editor; `""` = disabled |
 | `dac_mute` | `a` 16, `b` 17 | BCM GPIO pins for DAC A and B mute controls; `{"enabled": false}` if DACs are permanently unmuted |
 | `panel` | see below | Front panel pin assignments |
 
-Panel configuration (`"panel"`, BCM numbering): `panic` 22, `fx_switch` 23, `wifi_switch` 5, `wifi_led` 6, `status_led` 24, `hotspot` (network name, default `"MusicalBOX-SM"`), `enabled` (true).
+Panel configuration (`"panel"`, BCM numbering): `fx_switch` 23, `encoder` [5, 6], `chain` (buttons and LEDs on SPI: `enabled`, `latch` 25, `oe` 12, `brightness`, `length`, `buttons`, `leds`), `status_led` 24, optional `wifi_led` on GPIO, `wifi_at_boot` (false), `hotspot` (network name, default `"MusicalBOX-SM"`), `enabled` (true). Details in [software/control/README.md](software/control/README.md).
 
 ### instruments.json
 ```json
@@ -196,6 +197,7 @@ Each program features an ordered effects chain applied to the summed output of i
 | `tremolo` | `rate_hz` (5), `depth` (0.5), `shape` `"sine"` / `"triangle"` / `"square"`, `stereo` (false; true = panning tremolo) |
 | `width` | Stereo widening for mono sources: `amount` (0.5), `time_ms` (12), `low_cut_hz` (250: frequencies below this remain centered). Summing to mono perfectly reconstructs the original signal |
 | `room` | Small stereo decorrelated room reverb: `level` (0.5), `time_s` (0.7), `damp_hz` (3000: darker decay tail), `predelay_ms` (5), `low_cut_hz` (250) |
+| `motor` | Organ motor: not an audio effect but the speed of the program's voices. `state` `"on"` / `"off"`, `stop_s` (3), `start_s` (1). Off: every note slows down to silence, pitch and level together; on: back to full speed. Each move starts from the current speed; one motor per program, position in the chain irrelevant |
 
 ### Switch
 Effects can define a `switch`: a parameter that toggles between two distinct values each time the physical footswitch (or web UI button / console `w` command) is pressed.
@@ -209,6 +211,19 @@ Effects can define a `switch`: a parameter that toggles between two distinct val
   { "type": "echo",   "params": { "time_ms": 300 }, "switch": ["bypass", true, false] }
 ]
 ```
+
+
+### Organ motor
+Switched off and on from the footswitch, like the motor of an electromechanical organ:
+
+```json
+"fx": [
+  { "type": "motor",  "params": { "stop_s": 3, "start_s": 1 }, "switch": ["state", "on", "off"] },
+  { "type": "leslie", "params": { "speed": "slow" } }
+]
+```
+
+When a program is selected, its motor takes the first switch value (normally `"on"`).
 
 
 ## Raspberry Pi Installation

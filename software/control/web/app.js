@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 const FX_NAMES = {
   tone: "Equalizzatore", echo: "Eco a nastro", chorus: "Chorus", phaser: "Phaser", leslie: "Leslie",
-  tremolo: "Tremolo", fuzz: "Fuzz", width: "Width", room: "Stanza",
+  tremolo: "Tremolo", fuzz: "Fuzz", width: "Width", room: "Stanza", motor: "Motore (organo)",
 };
 const LABELS = {
   low_cut_hz: "Taglio bassi", bass_db: "Bassi", bass_hz: "Frequenza bassi", mid_db: "Medi", mid_hz: "Frequenza medi",
@@ -18,6 +18,7 @@ const LABELS = {
   octave: "Ottava", bias: "Bias", blend: "Fuzz / pulito", level_db: "Livello", amount: "Quantità", level: "Livello",
   time_s: "Durata", damp_hz: "Smorzamento", predelay_ms: "Pre-delay", attack_ms: "Attacco", decay_ms: "Decadimento",
   sustain: "Sostegno", release_ms: "Rilascio", levels: "Livelli", curve: "Curva", bypass: "Escluso",
+  state: "Motore acceso", stop_s: "Tempo di arresto", start_s: "Tempo di ripartenza",
 };
 const ENUM_LABELS = {
   slow: "Lento", fast: "Veloce", ce2: "Chorus", ensemble: "Ensemble", sine: "Sinusoide", triangle: "Triangolo",

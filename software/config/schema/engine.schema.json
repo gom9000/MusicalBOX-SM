@@ -91,6 +91,13 @@
       ],
       "default": "omni"
     },
+    "pitch_bend_range": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 24,
+      "default": 2,
+      "description": "pitch bend range in semitones, up and down; 0 = pitch bend ignored"
+    },
     "midi_serial": {
       "type": "string",
       "default": "/dev/serial0",
@@ -107,58 +114,158 @@
       "patternProperties": {
         "^_": {}
       },
-      "description": "front panel on the GPIO, handled by mbx-control (BCM numbers)",
+      "description": "front panel, handled by mbx-control (BCM GPIO numbers; null = not connected)",
       "properties": {
         "enabled": {
           "type": "boolean",
           "default": true
         },
-        "panic": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 27,
-          "default": 22,
-          "description": "Panic button, to GND"
-        },
         "fx_switch": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 0,
           "maximum": 27,
           "default": 23,
           "description": "effect switch footswitch (momentary), to GND"
         },
-        "wifi_switch": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 27,
-          "default": 5,
-          "description": "Wi-Fi switch to GND: closed = Wi-Fi off"
+        "encoder": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 27
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "default": [
+            5,
+            6
+          ],
+          "description": "volume encoder pins A and B; turning changes the master volume (not saved)"
         },
-        "wifi_led": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 27,
-          "default": 6,
-          "description": "Wi-Fi LED (with resistor)"
+        "volume_step_db": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 6,
+          "default": 1,
+          "description": "volume change per encoder step"
         },
         "status_led": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 0,
           "maximum": 27,
           "default": 24,
-          "description": "status LED: slow blink loading, steady ready, fast blink error"
+          "description": "status LED on its own GPIO (with resistor)"
+        },
+        "wifi_led": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 27,
+          "default": null,
+          "description": "Wi-Fi LED on a GPIO (with resistor), for a panel without the chain"
+        },
+        "wifi_at_boot": {
+          "type": "boolean",
+          "default": false,
+          "description": "Wi-Fi at power on; false = off until the panel's wifi button is pressed"
         },
         "hotspot": {
           "type": "string",
           "default": "MusicalBOX-SM",
-          "description": "NetworkManager connection of the Pi's own network"
+          "description": "NetworkManager connection of the box's own network"
         },
         "loading_timeout_s": {
-          "type": "integer",
+          "type": "number",
           "minimum": 10,
-          "maximum": 900,
           "default": 180,
           "description": "engine running this long without answering = error"
+        },
+        "chain": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^_": {}
+          },
+          "description": "buttons on 74HC165 and LEDs on 74HC595, on SPI with a shared latch",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "device": {
+              "type": "string",
+              "default": "/dev/spidev0.0"
+            },
+            "latch": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 27,
+              "default": 25,
+              "description": "latch GPIO: 165 SH/LD and 595 RCLK"
+            },
+            "oe": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 27,
+              "default": 12,
+              "description": "595 output enable GPIO (with 10 kOhm pull-up): LEDs dark until the first write; PWM sets the brightness. null = OE wired to GND"
+            },
+            "brightness": {
+              "type": "number",
+              "minimum": 5,
+              "maximum": 100,
+              "default": 100,
+              "description": "LED brightness, %"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8,
+              "default": 3,
+              "description": "165 + 595 pairs: 8 buttons and 8 LEDs each"
+            },
+            "speed_hz": {
+              "type": "integer",
+              "minimum": 10000,
+              "maximum": 4000000,
+              "default": 500000
+            },
+            "buttons": {
+              "type": "object",
+              "additionalProperties": false,
+              "patternProperties": {
+                "^[1-9][0-9]?$": {
+                  "type": "string",
+                  "pattern": "^(ok|back|panic|switch|wifi|record|status|volume [+-]|preset [+-]|preset ([1-9]|[1-9][0-9]|1[01][0-9]|12[0-8]))$"
+                }
+              },
+              "description": "button number -> action: ok, back, panic, switch, wifi, record, volume +/-, preset +/-, preset N. Default: 1 ok, 2 back, 3 panic, 4 wifi, 5-24 presets 1-20"
+            },
+            "leds": {
+              "type": "object",
+              "additionalProperties": false,
+              "patternProperties": {
+                "^[1-9][0-9]?$": {
+                  "type": "string"
+                }
+              },
+              "description": "LED number -> what it shows (wifi, switch, record, status, preset N; \"\" = off). LED n shows button n's action unless set here"
+            }
+          }
         }
       }
     },

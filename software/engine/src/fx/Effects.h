@@ -214,4 +214,29 @@ private:
     dsp::Lfo lfo_;
 };
 
+// The motor of an electromechanical organ: not an audio effect but the speed
+// of the program's voices. "off" slows every note down to silence (pitch and
+// level fall together, as tonewheels and their pickups), "on" brings them back
+// up, each move starting from the current speed. Its switch parameter is
+// "state" ("on"/"off"); the engine reads speed() for the voices.
+class Motor : public Effect {
+public:
+    explicit Motor(FxParams& p);
+    void prepare(double sampleRate) override;
+    void reset() override;
+    void process(float*, float*, int) override {}  // the sound passes unchanged
+    bool configureSwitch(const std::string& param, const nlohmann::json& a, const nlohmann::json& b) override;
+    void setSwitch(bool positionB, bool immediate) override;
+
+    float speed() const { return speed_; }  // 0 = stopped, 1 = running
+    float advance(int frames);              // audio thread: moves towards the target, returns the new speed
+
+private:
+    float stopS_, startS_;
+    bool onA_ = true, onB_ = false;
+    bool running_ = true;                   // target
+    float speed_ = 1.0f;
+    float down_ = 0.0f, up_ = 0.0f;         // speed change per sample
+};
+
 } // namespace mbx

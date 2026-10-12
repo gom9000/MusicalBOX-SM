@@ -44,7 +44,7 @@ bool loadEngineSettings(const std::filesystem::path& file, EngineSettings& out, 
     const std::string where = "engine.json";
     jsonutil::checkKeys(root,
                         {"version", "audio", "master_volume_db", "polyphony", "max_layers", "ram_budget_percent",
-                         "midi_channel", "midi_serial", "control_socket", "panel", "record_folder", "dac_mute"},  // "panel": read by mbx-control
+                         "midi_channel", "pitch_bend_range", "midi_serial", "control_socket", "panel", "record_folder", "dac_mute"},  // "panel": read by mbx-control
                         where, warnings);
     if (!root.contains("version") || root["version"] != 1) warnings.push_back(where + ": \"version\" should be 1");
 
@@ -70,6 +70,7 @@ bool loadEngineSettings(const std::filesystem::path& file, EngineSettings& out, 
     readNumber(root, "polyphony", kMinPolyphony, kMaxPolyphony, out.polyphony, where, warnings);
     readNumber(root, "max_layers", 1, kMaxLayersLimit, out.maxLayers, where, warnings);
     readNumber(root, "ram_budget_percent", 0, 95, out.ramBudgetPercent, where, warnings);
+    readNumber(root, "pitch_bend_range", 0, 24, out.pitchBendRange, where, warnings);
 
     if (root.contains("midi_channel")) {
         const json& c = root["midi_channel"];

@@ -22,7 +22,7 @@ public:
 
     Voice* allocate(double engineRate);
     // Adds the voices playing into `bus` to the buffers.
-    void render(int bus, float* left, float* right, int frames);
+    void render(int bus, float* left, float* right, int frames, const VoiceMod& mod = VoiceMod());
     bool busActive(int bus) const;
     int activeCount() const;
 

@@ -286,7 +286,8 @@
                     "tremolo",
                     "fuzz",
                     "width",
-                    "room"
+                    "room",
+                    "motor"
                   ]
                 },
                 "params": {
@@ -892,6 +893,51 @@
                             "maximum": 1000,
                             "default": 250,
                             "description": "below this the room is not fed (no boom)"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "const": "motor"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "patternProperties": {
+                          "^_": {}
+                        },
+                        "description": "organ motor: drives the speed of the program's voices (not an audio effect). Switch: [\"state\", \"on\", \"off\"]",
+                        "properties": {
+                          "state": {
+                            "enum": [
+                              "on",
+                              "off"
+                            ],
+                            "default": "on",
+                            "description": "on = running; off = notes slow down to silence (pitch and level together)"
+                          },
+                          "stop_s": {
+                            "type": "number",
+                            "minimum": 0.1,
+                            "maximum": 30,
+                            "default": 3,
+                            "description": "time to stop from full speed"
+                          },
+                          "start_s": {
+                            "type": "number",
+                            "minimum": 0.1,
+                            "maximum": 30,
+                            "default": 1,
+                            "description": "time to reach full speed from stop"
                           }
                         }
                       }

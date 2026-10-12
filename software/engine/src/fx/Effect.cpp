@@ -83,10 +83,10 @@ std::string FxParams::choice(const char* key, const std::string& fallback,
 
 std::unique_ptr<Effect> createEffect(const std::string& type, const json& params, const std::string& where,
                                      std::vector<std::string>& warnings) {
-    static const char* const kTypes[] = {"tone", "echo", "chorus", "phaser", "leslie", "tremolo", "fuzz", "width", "room"};
+    static const char* const kTypes[] = {"tone", "echo", "chorus", "phaser", "leslie", "tremolo", "fuzz", "width", "room", "motor"};
     if (std::find(std::begin(kTypes), std::end(kTypes), type) == std::end(kTypes)) {
         warnings.push_back(where + ": unknown effect type \"" + type +
-                           "\" (known: tone, echo, chorus, phaser, leslie, tremolo, fuzz, width, room) - ignored");
+                           "\" (known: tone, echo, chorus, phaser, leslie, tremolo, fuzz, width, room, motor) - ignored");
         return nullptr;
     }
     FxParams p(params, where + " (" + type + ")", warnings);
@@ -98,6 +98,7 @@ std::unique_ptr<Effect> createEffect(const std::string& type, const json& params
     if (type == "fuzz") return std::make_unique<Fuzz>(p);
     if (type == "width") return std::make_unique<Width>(p);
     if (type == "room") return std::make_unique<Room>(p);
+    if (type == "motor") return std::make_unique<Motor>(p);
     return std::make_unique<Tremolo>(p);
 }
 

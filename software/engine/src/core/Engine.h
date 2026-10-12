@@ -35,6 +35,8 @@ public:
     int polyphony() const { return voices_.polyphony(); }
     // 1..16, or 0 to accept every channel (omni).
     void setMidiChannel(int channel) { midiChannel_ = channel; }
+    // Pitch bend range in semitones, up and down (0 = pitch bend ignored).
+    void setPitchBendRange(float semitones) { bendRange_ = semitones; }
     int midiChannel() const { return midiChannel_; }
     // The table must outlive the engine and never change while it runs.
     void setPresets(const PresetTable* presets);
@@ -104,6 +106,9 @@ private:
     VoicePool voices_;
     bool sustain_ = false;
     int midiChannel_ = 0;
+    float bendRange_ = 2.0f;
+    float bend_ = 1.0f;        // pitch bend as a speed factor, reached at the end of each block
+    float bendTarget_ = 1.0f;
 
     float gain_ = 1.0f;        // smoothed master gain
     float gainTarget_ = 1.0f;

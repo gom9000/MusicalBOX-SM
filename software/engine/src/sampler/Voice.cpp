@@ -34,22 +34,27 @@ void Voice::kill(double engineRate) {
     env_.fastRelease(engineRate, kKillFadeMs);
 }
 
-void Voice::render(float* left, float* right, int frames) {
+void Voice::render(float* left, float* right, int frames, const VoiceMod& mod) {
     if (!active_) return;
     if (zone_->channels == 2)
-        renderImpl<2>(left, right, frames);
+        renderImpl<2>(left, right, frames, mod);
     else
-        renderImpl<1>(left, right, frames);
+        renderImpl<1>(left, right, frames, mod);
 }
 
 template <int Channels>
-void Voice::renderImpl(float* left, float* right, int frames) {
+void Voice::renderImpl(float* left, float* right, int frames, const VoiceMod& mod) {
     const Zone& z = *zone_;
     const std::int16_t* d = z.data.data();
     const std::uint32_t last = z.frames - 1;
     const double loopLimit = static_cast<double>(z.loopEnd) + 1.0;
     const double loopLength = static_cast<double>(z.loopEnd) + 1.0 - static_cast<double>(z.loopStart);
     const float scale = gain_ / 32768.0f;
+    const bool modulated = mod.stepFrom != 1.0f || mod.stepTo != 1.0f || mod.gainFrom != 1.0f || mod.gainTo != 1.0f;
+    const double stepInc = (static_cast<double>(mod.stepTo) - mod.stepFrom) / frames;
+    const float gainInc = (mod.gainTo - mod.gainFrom) / static_cast<float>(frames);
+    double stepMul = mod.stepFrom;
+    float gainMul = mod.gainFrom;
 
     for (int i = 0; i < frames; ++i) {
         if (env_.idle()) {
@@ -65,7 +70,7 @@ void Voice::renderImpl(float* left, float* right, int frames) {
         if (loop_ && k1 > z.loopEnd) k1 = z.loopStart;
 
         const float frac = static_cast<float>(pos_ - k);
-        const float amp = env_.next() * scale;
+        const float amp = modulated ? env_.next() * scale * gainMul : env_.next() * scale;
 
         if constexpr (Channels == 1) {
             const float a = d[k];
@@ -79,7 +84,13 @@ void Voice::renderImpl(float* left, float* right, int frames) {
             right[i] += (ar + (static_cast<float>(d[2 * k1 + 1]) - ar) * frac) * amp;
         }
 
-        pos_ += step_;
+        if (modulated) {
+            pos_ += step_ * stepMul;
+            stepMul += stepInc;
+            gainMul += gainInc;
+        } else {
+            pos_ += step_;
+        }
         if (loop_) {
             while (pos_ >= loopLimit) pos_ -= loopLength;
         }

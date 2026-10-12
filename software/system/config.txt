@@ -9,7 +9,7 @@ dtoverlay=vc4-kms-v3d,noaudio
 # Mute pins (XSMT) on GPIO16 (DAC A) and GPIO17 (DAC B), driven by mbx-engine.
 dtoverlay=hifiberry-dac
 
-# Front panel shift registers
+# Front panel buttons and LEDs (74HC165 / 74HC595 on SPI0, latch GPIO25)
 dtparam=spi=on
 
 # MIDI DIN on UART0 (PL011): the application asks for 38400 baud and gets 31250

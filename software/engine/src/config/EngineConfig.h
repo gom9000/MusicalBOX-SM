@@ -20,6 +20,7 @@ struct EngineSettings {
     int maxLayers = kDefaultMaxLayers;
     int ramBudgetPercent = 70;        // of physical RAM, for samples; 0 = no limit
     int midiChannel = 0;              // 1..16, 0 = omni
+    float pitchBendRange = 2.0f;      // semitones up and down, 0 = ignored
     std::string midiSerial = "/dev/serial0";  // DIN MIDI on the UART; empty = disabled
     std::string controlSocket = "/tmp/mbx-engine.sock";  // for mbx-control; empty = disabled
     std::string recordFolder = "/tmp";                    // recordings (r in the console, web editor)

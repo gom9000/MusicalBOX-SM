@@ -9,6 +9,13 @@ namespace mbx {
 
 struct Layer;
 
+// Speed and level applied to every voice of a bus during one block, as linear
+// ramps (pitch bend, organ motor). 1 = unchanged.
+struct VoiceMod {
+    float stepFrom = 1.0f, stepTo = 1.0f;  // playback speed factor
+    float gainFrom = 1.0f, gainTo = 1.0f;
+};
+
 // One sounding note: a read position in a zone, a playback speed and an
 // envelope. Renders by adding into the output buffers. No allocation.
 class Voice {
@@ -20,7 +27,7 @@ public:
     void release();
     void kill(double engineRate);  // short fade, then the slot is free
 
-    void render(float* left, float* right, int frames);
+    void render(float* left, float* right, int frames, const VoiceMod& mod);
 
     bool active() const { return active_; }
     bool released() const { return env_.stage() == Envelope::Stage::Release; }
@@ -33,7 +40,7 @@ public:
 
 private:
     template <int Channels>
-    void renderImpl(float* left, float* right, int frames);
+    void renderImpl(float* left, float* right, int frames, const VoiceMod& mod);
 
     const Zone* zone_ = nullptr;
     double pos_ = 0.0;

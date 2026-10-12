@@ -1,6 +1,7 @@
 #include "core/Engine.h"
 
 #include "core/Recorder.h"
+#include "fx/Effects.h"
 #include "fx/FxChain.h"
 #include "sampler/Instrument.h"
 
@@ -134,8 +135,22 @@ void Engine::render(float* out, int frames) {
         std::fill_n(left_.data(), n, 0.0f);
         std::fill_n(right_.data(), n, 0.0f);
 
+        // Speed of the voices in this block: pitch bend, and the motor of the
+        // program ("motor" in fx), each as a ramp from the previous block.
+        const float bendFrom = bend_;
+        bend_ = bendTarget_;
+        auto motorMod = [&](FxChain* chain, bool advance) {
+            VoiceMod mod{bendFrom, bend_, 1.0f, 1.0f};
+            if (Motor* motor = chain ? chain->motor() : nullptr) {
+                const float from = motor->speed();
+                const float to = advance ? motor->advance(n) : from;
+                mod = VoiceMod{bendFrom * from, bend_ * to, from, to};
+            }
+            return mod;
+        };
+
         // Active program: its voices through its effects.
-        voices_.render(activeBus_, left_.data(), right_.data(), n);
+        voices_.render(activeBus_, left_.data(), right_.data(), n, motorMod(busChain_[activeBus_], true));
         const bool chainFading = chainFade_ > 0 && oldChain_;
         if (chainFading) {
             std::copy_n(left_.data(), n, chainLeft_.data());
@@ -180,7 +195,7 @@ void Engine::render(float* out, int frames) {
         if (fading || voices_.busActive(other)) {
             std::fill_n(fadeLeft_.data(), n, 0.0f);
             std::fill_n(fadeRight_.data(), n, 0.0f);
-            voices_.render(other, fadeLeft_.data(), fadeRight_.data(), n);
+            voices_.render(other, fadeLeft_.data(), fadeRight_.data(), n, motorMod(busChain_[other], false));
             if (fading) {
                 if (FxChain* chain = busChain_[other]) chain->process(fadeLeft_.data(), fadeRight_.data(), n);
                 const float step = 1.0f / static_cast<float>(fadeTotal_);
@@ -276,6 +291,13 @@ void Engine::handleMidi(const MidiEvent& m) {
             allSoundOff();
         else if (m.data1 == midi::kCcAllNotesOff)
             releaseAll();
+        break;
+    case midi::kPitchBend:
+        if (bendRange_ > 0.0f) {
+            const int value = (m.data2 << 7) | m.data1;  // 0..16383, 8192 = centre
+            const float semitones = static_cast<float>(value - 8192) / 8192.0f * bendRange_;
+            bendTarget_ = std::exp2(semitones / 12.0f);
+        }
         break;
     case midi::kProgramChange:
         // Program Change 0..127 selects preset 1..128 (an undefined one is ignored).

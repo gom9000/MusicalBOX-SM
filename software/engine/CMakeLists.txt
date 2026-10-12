@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(musicalbox_engine VERSION 0.11.0 LANGUAGES C CXX)
+project(musicalbox_engine VERSION 0.12.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -74,6 +74,7 @@ add_library(mbx_core STATIC
     src/fx/Fuzz.cpp
     src/fx/Width.cpp
     src/fx/Room.cpp
+    src/fx/Motor.cpp
 )
 target_include_directories(mbx_core PUBLIC src)
 target_link_libraries(mbx_core PUBLIC mbx_thirdparty)
@@ -108,7 +109,7 @@ install(TARGETS mbx-engine RUNTIME DESTINATION bin)
 # ---------------------------------------------------------------------------
 if(MBX_BUILD_TESTS)
     enable_testing()
-    foreach(t test_midi_parser test_note_name test_engine test_programs test_engine_config test_limiter test_fx test_uart_midi test_control test_output_router)
+    foreach(t test_midi_parser test_note_name test_engine test_programs test_engine_config test_limiter test_fx test_uart_midi test_control test_output_router test_motor)
         add_executable(${t} tests/${t}.cpp)
         target_link_libraries(${t} PRIVATE mbx_core)
         add_test(NAME ${t} COMMAND ${t})
