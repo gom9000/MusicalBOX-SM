@@ -31,90 +31,79 @@ float onePoleCoef(double sampleRate, double hz) {
 }
 } // namespace
 
-Leslie::Leslie(FxParams& p)
-    : fast_(p.choice("speed", "slow", {"slow", "fast"}) == "fast"),
-      depth_(p.number("depth", 1.0f, 0.0f, 2.0f)),
-      spread_(p.number("spread", 0.8f, 0.0f, 1.0f)),
-      drive_(p.number("drive", 0.0f, 0.0f, 1.0f)),
-      mix_(p.number("mix", 1.0f, 0.0f, 1.0f)),
-      cabinet_(p.number("cabinet", 1.0f, 0.0f, 2.0f)),
-      topHz_(p.number("top_hz", 2800.0f, 1000.0f, 20000.0f)) {}
-
-void Leslie::prepare(double sr) {
-    sampleRate_ = sr;
+void Leslie::allocate(double sr) {
     lowA_.set(Biquad::Type::LowPass, sr, kCrossoverHz, 0.7071);
     lowB_.set(Biquad::Type::LowPass, sr, kCrossoverHz, 0.7071);
     highA_.set(Biquad::Type::HighPass, sr, kCrossoverHz, 0.7071);
     highB_.set(Biquad::Type::HighPass, sr, kCrossoverHz, 0.7071);
 
-    // Depth 1 is a real cabinet: horn mouth about 19 cm from the axis
-    // (Doppler about +-0.55 ms), strong horn amplitude change, milder drum.
     const float ms = static_cast<float>(0.001 * sr);
     hornBase_ = 1.2f * ms;
     drumBase_ = 1.2f * ms;
-    // With the cabinet reflections the horn swings less between the
-    // microphones (the reflections fill in) and the drum is heard more.
-    const float cab = std::min(1.0f, cabinet_);
-    hornDoppler_ = depth_ * 0.55f * ms;
-    drumDoppler_ = depth_ * (0.2f + 0.2f * cab) * ms;
-    hornAm_ = std::min(0.95f, (0.7f - 0.3f * cab) * depth_);
-    drumAm_ = std::min(0.9f, (0.45f + 0.35f * cab) * depth_);
-    hornMakeup_ = 1.0f / (1.0f - 0.5f * hornAm_);
-    drumMakeup_ = 1.0f / (1.0f - 0.5f * drumAm_);
-    // Facing away, the horn loses its top: low-pass from 2.5 kHz (away) to 14 kHz (facing).
-    darkCoef_ = onePoleCoef(sr, 14000.0 - std::min(1.0f, depth_) * 11500.0);
-    brightCoef_ = onePoleCoef(sr, 14000.0);
-
-    const float micOffset = 0.15f + 0.35f * spread_;
     float longest = 0.0f;
     for (int k = 0; k < kReflections; ++k) {
         const ReflectionDef& d = kReflectionDefs[k];
         Reflection& r = refl_[static_cast<std::size_t>(k)];
-        r.gain = d.gain * cabinet_;
         for (int c = 0; c < 2; ++c) {
-            const float angle = c == 0 ? d.angle : micOffset - d.angle;
-            r.cosA[c] = std::cos(dsp::kTwoPi * angle);
-            r.sinA[c] = std::sin(dsp::kTwoPi * angle);
             const float jitter = c == 0 ? 0.0f : 0.5f * std::fmod(k * 0.37f, 0.3f);
             r.delay[c] = d.ms * (1.0f + jitter) * ms;
             longest = std::max(longest, r.delay[c]);
         }
     }
+    // Room for the deepest Doppler (depth 2), so depth can move while it plays.
+    const float hornMost = 2.0f * 0.55f * ms, drumMost = 2.0f * 0.4f * ms;
+    horn_.resize(static_cast<std::size_t>(hornBase_ + hornMost + longest) + 8);
+    drum_.resize(static_cast<std::size_t>(drumBase_ + drumMost + longest) + 8);
     reflCoef_ = onePoleCoef(sr, kReflectionToneHz);
-    // The reflections add energy: keep the overall level about the same.
-    float energy = 0.0f;
-    for (const auto& r : refl_) energy += r.gain * r.gain;
-    cabinetMakeup_ = 1.0f / std::sqrt(1.0f + 0.5f * energy);
-    topOn_ = topHz_ < 18000.0f;
-    for (auto& t : top_) t.set(Biquad::Type::LowPass, sr, topHz_, 0.7071);
-
-    horn_.resize(static_cast<std::size_t>(hornBase_ + hornDoppler_ + longest) + 8);
-    drum_.resize(static_cast<std::size_t>(drumBase_ + drumDoppler_ + longest) + 8);
-    hornLfo_.set(sr, fast_ ? kHornFastHz : kHornSlowHz);
-    drumLfo_.set(sr, fast_ ? kDrumFastHz : kDrumSlowHz, 0.4);
-    // Speed changes (switch): the light horn gets there in about a second, the
-    // heavy drum takes several. Time constants of an exponential approach.
+    brightCoef_ = onePoleCoef(sr, 14000.0);
+    const bool fast = choice(kSpeed) == 1;
+    hornLfo_.set(sr, fast ? kHornFastHz : kHornSlowHz);
+    drumLfo_.set(sr, fast ? kDrumFastHz : kDrumSlowHz, 0.4);
+    // Speed changes: the light horn gets there in about a second, the heavy
+    // drum takes several. Time constants of an exponential approach.
     auto coef = [sr](double seconds) { return static_cast<float>(1.0 - std::exp(-1.0 / (seconds * sr))); };
     hornUp_ = coef(0.35);
     hornDown_ = coef(0.6);
     drumUp_ = coef(1.5);
     drumDown_ = coef(2.0);
-    reset();
 }
 
-bool Leslie::configureSwitch(const std::string& param, const nlohmann::json& a, const nlohmann::json& b) {
-    auto speed = [](const nlohmann::json& v, bool& fast) {
-        if (!v.is_string() || (v != "slow" && v != "fast")) return false;
-        fast = v == "fast";
-        return true;
-    };
-    if (param != "speed" || !speed(a, fastA_) || !speed(b, fastB_)) return false;
-    switchable_ = true;
-    return true;
-}
+void Leslie::update(bool immediate) {
+    const double sr = sampleRate_;
+    const float ms = static_cast<float>(0.001 * sr);
+    const float depth = param(kDepth), cabinet = param(kCabinet);
+    // Depth 1 is a real cabinet: horn mouth about 19 cm from the axis
+    // (Doppler about +-0.55 ms), strong horn amplitude change, milder drum.
+    // With the cabinet reflections the horn swings less between the
+    // microphones (the reflections fill in) and the drum is heard more.
+    const float cab = std::min(1.0f, cabinet);
+    hornDoppler_ = depth * 0.55f * ms;
+    drumDoppler_ = depth * (0.2f + 0.2f * cab) * ms;
+    hornAm_ = std::min(0.95f, (0.7f - 0.3f * cab) * depth);
+    drumAm_ = std::min(0.9f, (0.45f + 0.35f * cab) * depth);
+    hornMakeup_ = 1.0f / (1.0f - 0.5f * hornAm_);
+    drumMakeup_ = 1.0f / (1.0f - 0.5f * drumAm_);
+    // Facing away, the horn loses its top: low-pass from 2.5 kHz (away) to 14 kHz (facing).
+    darkCoef_ = onePoleCoef(sr, 14000.0 - std::min(1.0f, depth) * 11500.0);
 
-void Leslie::setSwitch(bool positionB, bool immediate) {
-    if (switchable_) setRates(positionB ? fastB_ : fastA_, immediate);
+    const float micOffset = 0.15f + 0.35f * param(kSpread);
+    for (int k = 0; k < kReflections; ++k) {
+        const ReflectionDef& d = kReflectionDefs[k];
+        Reflection& r = refl_[static_cast<std::size_t>(k)];
+        r.gain = d.gain * cabinet;
+        for (int c = 0; c < 2; ++c) {
+            const float angle = c == 0 ? d.angle : micOffset - d.angle;
+            r.cosA[c] = std::cos(dsp::kTwoPi * angle);
+            r.sinA[c] = std::sin(dsp::kTwoPi * angle);
+        }
+    }
+    // The reflections add energy: keep the overall level about the same.
+    float energy = 0.0f;
+    for (const auto& r : refl_) energy += r.gain * r.gain;
+    cabinetMakeup_ = 1.0f / std::sqrt(1.0f + 0.5f * energy);
+    topOn_ = param(kTop) < 18000.0f;
+    for (auto& t : top_) t.set(Biquad::Type::LowPass, sr, param(kTop), 0.7071);
+    setRates(choice(kSpeed) == 1, immediate);
 }
 
 void Leslie::setRates(bool fast, bool immediate) {
@@ -129,7 +118,7 @@ void Leslie::setRates(bool fast, bool immediate) {
 }
 
 void Leslie::reset() {
-    setRates(switchable_ ? fastA_ : fast_, true);
+    setRates(choice(kSpeed) == 1, true);
     lowA_.reset(); lowB_.reset(); highA_.reset(); highB_.reset();
     horn_.reset();
     drum_.reset();
@@ -156,9 +145,11 @@ float Leslie::reflections(const dsp::DelayLine& line, float base, float doppler,
 }
 
 void Leslie::process(float* left, float* right, int frames) {
-    const float k = 1.0f + 6.0f * drive_;
+    const float drive = param(kDrive), mix = param(kMix);
+    const float k = 1.0f + 6.0f * drive;
     // Second microphone: from 0.15 turn (close, narrow) to 0.5 turn (opposite sides, wide).
-    const float micOffset = 0.15f + 0.35f * spread_;
+    const float micOffset = 0.15f + 0.35f * param(kSpread);
+    const bool cabinet = param(kCabinet) > 0.0f;
 
     for (int i = 0; i < frames; ++i) {
         if (hornHz_ != hornTarget_ || drumHz_ != drumTarget_) {
@@ -173,12 +164,11 @@ void Leslie::process(float* left, float* right, int frames) {
             }
         }
         float m = 0.5f * (left[i] + right[i]);
-        if (drive_ > 0.0f) m = dsp::softClip(k * m) / k;  // the amplifier: only loud passages distort
+        if (drive > 0.0f) m = dsp::softClip(k * m) / k;  // the amplifier: only loud passages distort
 
         horn_.push(highB_.process(highA_.process(m)));
         drum_.push(lowB_.process(lowA_.process(m)));
 
-        const bool cabinet = cabinet_ > 0.0f;
         float hs0 = 0.0f, hc0 = 0.0f, ds0 = 0.0f, dc0 = 0.0f;
         if (cabinet) {
             hs0 = std::sin(dsp::kTwoPi * hornLfo_.phase());
@@ -216,8 +206,8 @@ void Leslie::process(float* left, float* right, int frames) {
         hornLfo_.advance();
         drumLfo_.advance();
 
-        left[i] = (1.0f - mix_) * left[i] + mix_ * out[0];
-        right[i] = (1.0f - mix_) * right[i] + mix_ * out[1];
+        left[i] = (1.0f - mix) * left[i] + mix * out[0];
+        right[i] = (1.0f - mix) * right[i] + mix * out[1];
     }
 }
 

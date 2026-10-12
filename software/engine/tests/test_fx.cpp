@@ -48,7 +48,7 @@ Stereo noise(double seconds) {
 }
 
 void run(Effect& e, Stereo& s) {
-    for (int pos = 0; pos < s.size(); pos += 256) e.process(s.l.data() + pos, s.r.data() + pos, std::min(256, s.size() - pos));
+    for (int pos = 0; pos < s.size(); pos += 256) e.run(s.l.data() + pos, s.r.data() + pos, std::min(256, s.size() - pos));
 }
 
 double rms(const std::vector<float>& x, int from = 0, int to = -1) {

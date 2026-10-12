@@ -4,31 +4,33 @@
 
 namespace mbx {
 
-Chorus::Chorus(FxParams& p)
-    : ensemble_(p.choice("mode", "ce2", {"ce2", "ensemble"}) == "ensemble"),
-      rateHz_(p.number("rate_hz", ensemble_ ? 0.6f : 0.8f, 0.05f, 8.0f)),
-      depth_(p.number("depth", 0.5f, 0.0f, 1.0f)),
-      mix_(p.number("mix", ensemble_ ? 0.7f : 0.5f, 0.0f, 1.0f)) {}
-
-void Chorus::prepare(double sr) {
+void Chorus::allocate(double sr) {
     const double ms = 0.001 * sr;
-    if (ensemble_) {
-        baseDelay_ = static_cast<float>(12.0 * ms);
-        slowDepth_ = static_cast<float>(depth_ * 4.0 * ms);   // slow, wide pitch drift
-        fastDepth_ = static_cast<float>(depth_ * 0.35 * ms);  // fast shimmer
-        fast_.set(sr, 6.3);
-    } else {
-        baseDelay_ = static_cast<float>(7.0 * ms);
-        slowDepth_ = static_cast<float>(depth_ * 3.0 * ms);
-        fastDepth_ = 0.0f;
-    }
-    slow_.set(sr, rateHz_);
-    makeup_ = 1.0f / std::sqrt((1.0f - mix_) * (1.0f - mix_) + mix_ * mix_);
+    // Room for the deepest setting of either mode.
+    const double most = std::max(12.0 + 4.0 + 0.35, 7.0 + 3.0) * ms;
     for (int c = 0; c < 2; ++c) {
-        line_[c].resize(static_cast<std::size_t>(baseDelay_ + slowDepth_ + fastDepth_) + 8);
+        line_[c].resize(static_cast<std::size_t>(most) + 8);
         dark_[c].set(sr, 7000.0);  // bucket-brigade delays are dark
     }
-    reset();
+    ensemble_ = choice(kMode) == 1;
+    if (ensemble_) fast_.set(sr, 6.3);
+    slow_.set(sr, param(kRate));
+}
+
+void Chorus::update(bool) {
+    const double ms = 0.001 * sampleRate_;
+    const float depth = param(kDepth), mix = param(kMix);
+    if (ensemble_) {
+        baseDelay_ = static_cast<float>(12.0 * ms);
+        slowDepth_ = static_cast<float>(depth * 4.0 * ms);   // slow, wide pitch drift
+        fastDepth_ = static_cast<float>(depth * 0.35 * ms);  // fast shimmer
+    } else {
+        baseDelay_ = static_cast<float>(7.0 * ms);
+        slowDepth_ = static_cast<float>(depth * 3.0 * ms);
+        fastDepth_ = 0.0f;
+    }
+    slow_.setHz(sampleRate_, param(kRate));
+    makeup_ = 1.0f / std::sqrt((1.0f - mix) * (1.0f - mix) + mix * mix);
 }
 
 void Chorus::reset() {
@@ -43,7 +45,8 @@ void Chorus::reset() {
 void Chorus::process(float* left, float* right, int frames) {
     float* io[2] = {left, right};
     // Dry and modulated sound are loosely correlated: keep the loudness of the dry sound.
-    const float dryGain = (1.0f - mix_) * makeup_, wetGain = mix_ * makeup_;
+    const float mix = param(kMix);
+    const float dryGain = (1.0f - mix) * makeup_, wetGain = mix * makeup_;
     for (int i = 0; i < frames; ++i) {
         for (int c = 0; c < 2; ++c) {
             const float dry = io[c][i];

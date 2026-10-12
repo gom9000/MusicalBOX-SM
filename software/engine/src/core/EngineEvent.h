@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fx/FxChange.h"
 #include "midi/MidiEvent.h"
 
 #include <array>
@@ -8,6 +9,7 @@
 namespace mbx {
 
 struct Program;
+class FxChain;
 constexpr int kEventPresetCount = 128;  // = kPresetCount (sampler/Program.h)
 
 // Everything that reaches the audio thread travels as one of these,
@@ -20,6 +22,8 @@ struct EngineEvent {
         SelectPreset,  // slot = 1..128
         FxSwitch,      // slot = -1 toggle, 0 position A, 1 position B
         SwapPresets,   // presets = new table, slot = generation (see Engine::appliedGeneration)
+        Fx,            // chain, fx: a value for an effect that keeps playing; slot 1 = programmed value
+        FxCurrent,     // chain, fx: a live control, applied only if that chain is playing
     };
 
     Type type = Type::Midi;
@@ -27,6 +31,8 @@ struct EngineEvent {
     float value = 0.0f;
     int slot = 0;
     const std::array<const Program*, kEventPresetCount>* presets = nullptr;
+    FxChain* chain = nullptr;
+    FxChange fx{};
 
     static EngineEvent fromMidi(const MidiEvent& m) {
         EngineEvent e;
@@ -58,6 +64,25 @@ struct EngineEvent {
         e.type = Type::SwapPresets;
         e.presets = table;
         e.slot = generation;
+        return e;
+    }
+    // A new programmed value for a chain (web editor): the chain is shared by
+    // the old and the new preset table, so it keeps playing.
+    static EngineEvent fxDefine(FxChain* chain, const FxChange& change) {
+        EngineEvent e;
+        e.type = Type::Fx;
+        e.chain = chain;
+        e.fx = change;
+        e.slot = 1;
+        return e;
+    }
+    // A control moved by hand, for the program playing (its chain; ignored if
+    // another program was selected in the meantime).
+    static EngineEvent fxControl(const FxChain* chain, const FxChange& change) {
+        EngineEvent e;
+        e.type = Type::FxCurrent;
+        e.chain = const_cast<FxChain*>(chain);
+        e.fx = change;
         return e;
     }
     static EngineEvent selectPreset(int slot) {

@@ -7,6 +7,7 @@ After=mbx-engine.service network.target
 [Service]
 User=@USER@
 SupplementaryGroups=gpio spi
+Environment=LG_WD=/tmp
 WorkingDirectory=@DIR@
 ExecStart=/usr/bin/python3 @DIR@/control/mbx_control.py --port 80 --config @DIR@/config
 # Port 80 without running as root.

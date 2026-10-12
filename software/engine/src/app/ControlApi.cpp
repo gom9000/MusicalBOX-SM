@@ -164,6 +164,34 @@ std::string ControlApi::handle(const std::string& request) {
             engine_.post(source_, EngineEvent::fxSwitch(req.value("position", -1)));
             return json{{"ok", true}}.dump();
         }
+        if (cmd == "param") {
+            // A live control for the program playing: {"fx": 2, "param": "mix", "value": 0.4}.
+            const auto bank = banks_.current();
+            const int slot = engine_.currentSlot();
+            const Program* program = bank && slot >= 1 && slot <= kPresetCount ? bank->presets[slot - 1] : nullptr;
+            if (!program || !program->fxChain) return fail("no effects in the program playing").dump();
+            const int fxSlot = program->fxChain->slotOf(req.value("fx", 0));
+            if (fxSlot < 0) return fail("\"fx\" must be the number of an effect of the program (1 = first)").dump();
+            const std::string name = req.value("param", "");
+            FxChange change{fxSlot, 0, 0.0f, 0.0f};
+            if (name == "bypass") {
+                if (!req.contains("value") || !req["value"].is_boolean()) return fail("bypass needs true or false").dump();
+                change.param = FxChange::kBypass;
+                change.value = req["value"].get<bool>() ? 1.0f : 0.0f;
+            } else {
+                const EffectType& type = program->fxChain->typeAt(fxSlot);
+                const int pi = type.index(name);
+                if (pi < 0) return fail("unknown parameter \"" + name + "\"").dump();
+                const ParamSpec& spec = type.params[static_cast<std::size_t>(pi)];
+                if (!spec.live) return fail("\"" + name + "\" cannot change while playing").dump();
+                std::vector<std::string> ignored;
+                if (!req.contains("value") || !readValue(spec, req["value"], "", ignored, change.value))
+                    return fail("bad value for \"" + name + "\"").dump();
+                change.param = pi;
+            }
+            engine_.post(source_, EngineEvent::fxControl(program->fxChain.get(), change));
+            return json{{"ok", true}}.dump();
+        }
         if (cmd == "volume") {
             const float v = req.value("db", 0.0f);
             if (!(v >= -90.0f && v <= 6.0f)) return fail("db must be -90..6").dump();

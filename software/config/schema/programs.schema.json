@@ -325,6 +325,37 @@
                     }
                   ],
                   "description": "[\"parameter\", A, B]: the program's switch button moves the parameter between A and B, e.g. [\"speed\", \"slow\", \"fast\"] or [\"bypass\", false, true]"
+                },
+                "cc": {
+                  "type": "object",
+                  "description": "MIDI controllers moving parameters while playing: { \"parameter\": controller } or { \"parameter\": [controller, min, max] }; \"bypass\" too. Controller 0..119, not 64",
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 119
+                      },
+                      {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 3,
+                        "items": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 119
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      }
+                    ]
+                  }
                 }
               },
               "allOf": [

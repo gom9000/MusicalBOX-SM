@@ -65,7 +65,11 @@ void Engine::setProgram(const Program* program) {
     useChains(program);
     setCurrent(program);
     busChain_[activeBus_] = program && program->fxChain ? program->fxChain.get() : nullptr;
-    if (busChain_[activeBus_]) busChain_[activeBus_]->reset();
+    if (FxChain* chain = busChain_[activeBus_]) {
+        chain->reset();
+        chain->restore();
+        chain->setSwitch(false, true);
+    }
     fxSwitch_ = false;
     fxSwitchState_.store(false, std::memory_order_relaxed);
     currentSlot_.store(0, std::memory_order_relaxed);
@@ -268,6 +272,12 @@ void Engine::handle(const EngineEvent& event) {
         if (busChain_[activeBus_] && busChain_[activeBus_]->hasSwitch())
             setFxSwitch(event.slot < 0 ? !fxSwitch_ : event.slot == 1, false);
         break;
+    case EngineEvent::Type::Fx:
+        if (event.chain) event.chain->apply(event.fx, event.slot == 1);
+        break;
+    case EngineEvent::Type::FxCurrent:
+        if (event.chain && event.chain == busChain_[activeBus_]) event.chain->apply(event.fx, false);
+        break;
     }
 }
 
@@ -291,6 +301,8 @@ void Engine::handleMidi(const MidiEvent& m) {
             allSoundOff();
         else if (m.data1 == midi::kCcAllNotesOff)
             releaseAll();
+        else if (FxChain* chain = busChain_[activeBus_])
+            chain->midiControl(m.data1, m.data2);  // parameters mapped with "cc"
         break;
     case midi::kPitchBend:
         if (bendRange_ > 0.0f) {
@@ -380,7 +392,8 @@ void Engine::switchProgram(const Program* next) {
     fadeRemaining_ = fadeTotal_;
     setCurrent(next);
     flushRemaining_ = 0;
-    setFxSwitch(false, true);  // every program starts from its A values
+    if (chain) chain->restore();  // controllers moved last time: back to the programmed values
+    setFxSwitch(false, true);     // every program starts from its A values
 }
 
 // Audio thread. New preset table: the program playing is looked up by id
@@ -414,6 +427,12 @@ void Engine::swapPresets(const PresetTable* table, int generation) {
     } else {
         setCurrent(next);
         FxChain* chain = next->fxChain ? next->fxChain.get() : nullptr;
+        if (chain && chain == busChain_[activeBus_]) {
+            // Same effects, new values (sent as Fx events): nothing to swap, the tails go on.
+            currentSlot_.store(nextSlot, std::memory_order_relaxed);
+            appliedGeneration_.store(generation, std::memory_order_release);
+            return;
+        }
         oldChain_ = busChain_[activeBus_];
         chainFade_ = oldChain_ ? fadeTotal_ : 0;
         busChain_[activeBus_] = chain;

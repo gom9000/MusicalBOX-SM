@@ -54,6 +54,7 @@ struct FxDef {
     // between A (at program selection) and B. Values serialised as JSON.
     std::string switchParam;
     std::string switchA, switchB;
+    std::string ccJson;  // "cc": { param: controller } - MIDI controllers moving parameters live
 };
 
 // One instrument inside a program, with its own rules. A program has at most

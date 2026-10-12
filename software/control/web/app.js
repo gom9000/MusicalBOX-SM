@@ -140,9 +140,12 @@ function previewPresets() {
 }
 
 let previewTimer = null, previewBusy = false, previewAgain = false;
-function schedulePreview(delay = 120) {
+// While a slider moves, the draft goes to the engine about 15 times a second:
+// values of the same effects change in the sound already playing.
+function schedulePreview(delay = 60) {
+  if (previewTimer && delay > 0) return;  // one is planned: it sends the latest draft
   clearTimeout(previewTimer);
-  previewTimer = setTimeout(sendPreview, delay);
+  previewTimer = setTimeout(() => { previewTimer = null; sendPreview(); }, delay);
 }
 async function sendPreview() {
   if (previewBusy) { previewAgain = true; return; }

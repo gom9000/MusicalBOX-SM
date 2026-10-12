@@ -30,28 +30,27 @@ inline void hadamard(float* x) {
 }
 } // namespace
 
-Room::Room(FxParams& p)
-    : level_(p.number("level", 0.5f, 0.0f, 1.5f)),
-      timeS_(p.number("time_s", 0.7f, 0.2f, 4.0f)),
-      dampHz_(p.number("damp_hz", 3000.0f, 1000.0f, 16000.0f)),
-      predelayMs_(p.number("predelay_ms", 5.0f, 0.0f, 80.0f)),
-      lowCutHz_(p.number("low_cut_hz", 250.0f, 20.0f, 1000.0f)) {}
-
-void Room::prepare(double sr) {
-    predelay_ = static_cast<float>(predelayMs_ * 0.001 * sr);
-    pre_.resize(static_cast<std::size_t>(predelay_) + 4);
-    lowCut_.set(Biquad::Type::HighPass, sr, lowCutHz_, 0.7071);
+void Room::allocate(double sr) {
+    pre_.resize(static_cast<std::size_t>(80.0 * 0.001 * sr) + 4);  // the longest predelay
     for (int i = 0; i < kLines; ++i) {
         length_[i] = std::round(kLineMs[i] * 0.001f * static_cast<float>(sr));
         lines_[i].resize(static_cast<std::size_t>(length_[i]) + 4);
-        // 60 dB down after time_s: each pass through a line loses its share.
-        gain_[i] = std::pow(10.0f, -3.0f * length_[i] / (timeS_ * static_cast<float>(sr)));
     }
-    dampCoef_ = static_cast<float>(1.0 - std::exp(-2.0 * 3.14159265358979323846 * dampHz_ / sr));
+}
+
+void Room::update(bool) {
+    const double sr = sampleRate_;
+    const float timeS = param(kTime);
+    predelay_ = static_cast<float>(param(kPredelay) * 0.001 * sr);
+    lowCut_.set(Biquad::Type::HighPass, sr, param(kLowCut), 0.7071);
+    for (int i = 0; i < kLines; ++i) {
+        // 60 dB down after time_s: each pass through a line loses its share.
+        gain_[i] = std::pow(10.0f, -3.0f * length_[i] / (timeS * static_cast<float>(sr)));
+    }
+    dampCoef_ = static_cast<float>(1.0 - std::exp(-2.0 * 3.14159265358979323846 * param(kDamp) / sr));
     // The tail of a longer room carries more energy: keep "level" about the
     // ratio between the room and the dry sound.
-    outGain_ = 0.5f / std::sqrt(timeS_ / 0.7f);
-    reset();
+    outGain_ = 0.5f / std::sqrt(timeS / 0.7f);
 }
 
 void Room::reset() {
@@ -63,6 +62,7 @@ void Room::reset() {
 
 void Room::process(float* left, float* right, int frames) {
     float x[kLines];
+    const float level = param(kLevel);
     for (int i = 0; i < frames; ++i) {
         pre_.push(lowCut_.process(0.5f * (left[i] + right[i])));
         const float in = pre_.read(predelay_);  // at least one sample
@@ -79,8 +79,8 @@ void Room::process(float* left, float* right, int frames) {
         hadamard(x);
         for (int k = 0; k < kLines; ++k) lines_[k].push(x[k] + kIn[k] * in);
 
-        left[i] += level_ * outGain_ * outL;
-        right[i] += level_ * outGain_ * outR;
+        left[i] += level * outGain_ * outL;
+        right[i] += level * outGain_ * outR;
     }
 }
 

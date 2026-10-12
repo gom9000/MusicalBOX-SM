@@ -33,11 +33,31 @@ void BankManager::install(std::shared_ptr<ProgramBank> bank) {
 }
 
 bool BankManager::swap(std::shared_ptr<ProgramBank> bank, int source) {
-    // Effects get their buffers here, not in the audio thread.
+    std::lock_guard<std::mutex> lock(mutex_);
+    // A program whose effects have the same structure as before keeps its
+    // chain, playing: only the values that changed are sent to it.
+    struct Reuse {
+        Program* program;
+        std::shared_ptr<FxChain> chain;
+    };
+    std::vector<Reuse> reuse;
+    if (current_) {
+        for (const auto& program : bank->programs) {
+            const Program* old = current_->find(program->id);
+            if (!old || !old->fxChain || !program->fxChain || !old->fxChain->sameStructure(*program->fxChain)) continue;
+            for (const FxChange& change : old->fxChain->changesTo(*program->fxChain))
+                if (!engine_.post(source, EngineEvent::fxDefine(old->fxChain.get(), change))) return false;
+            reuse.push_back({program.get(), old->fxChain});
+        }
+    }
+    for (auto& r : reuse) {
+        r.chain->adoptValues(*r.program->fxChain);
+        r.program->fxChain = r.chain;
+    }
+    // New effects get their buffers here, not in the audio thread.
     for (const auto& program : bank->programs)
         if (program->fxChain && !program->fxChain->prepared()) program->fxChain->prepare(engine_.sampleRate());
 
-    std::lock_guard<std::mutex> lock(mutex_);
     const int generation = generation_ + 1;
     if (!engine_.post(source, EngineEvent::swapPresets(&bank->presets, generation))) return false;
     generation_ = generation;

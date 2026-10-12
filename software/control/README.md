@@ -32,8 +32,9 @@ The interface is in Italian. Its pages:
   (assign) sets the program of each preset and the one selected at power on (★), and adds new
   presets. Effect switch, Panic and master volume.
 - **Suoni** (sounds): the programs. Name, volume, output, envelope, velocity, loop, layers and
-  the effects chain with its switch. Every change is heard at once; an on-screen keyboard plays
-  the sound.
+  the effects chain with its switch. Every change is heard at once: a new value goes to the
+  effect already playing (tails and modulations go on), a new effect or a different order
+  cross-fades to a new chain. An on-screen keyboard plays the sound.
 - **Strumenti** (instruments): the instruments in memory and the RAM they use.
 - **Sistema** (system): engine status, warnings, recordings (start, stop, download, delete)
   and backups.
@@ -131,7 +132,7 @@ the log says so and the status LED shows a warning.
 | GET | `/api/warnings` | warnings of the startup and of the last preview |
 | GET | `/api/recordings` | recordings in the engine's `record_folder`, newest first |
 | GET | `/api/recordings/<name>` | downloads a recording |
-| POST | `/api/cmd` | `{"cmd": "preset", "slot": 3}`, `switch`, `volume` (`db`), `panic`, `note` (`key`, `velocity`, 0 = release), `record` (`action` start/stop) |
+| POST | `/api/cmd` | `{"cmd": "preset", "slot": 3}`, `switch`, `volume` (`db`), `panic`, `note` (`key`, `velocity`, 0 = release), `record` (`action` start/stop), `param` (`fx`, `param`, `value`: a live control for the program playing) |
 | POST | `/api/preview` | `{programs, presets}`: the engine plays them at once, without saving |
 | POST | `/api/save` | checks, copies the current files to `config/backup/`, writes, reloads |
 | POST | `/api/revert` | the engine goes back to the saved files |

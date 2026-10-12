@@ -11,30 +11,25 @@ namespace {
 constexpr double kButterworth8Q[4] = {0.5098, 0.6013, 0.9000, 2.5629};
 } // namespace
 
-Fuzz::Fuzz(FxParams& p)
-    : drive_(p.number("drive", 0.6f, 0.0f, 1.0f)),
-      octave_(p.number("octave", 0.5f, 0.0f, 1.0f)),
-      bias_(p.number("bias", 0.2f, 0.0f, 1.0f)),
-      toneHz_(p.number("tone_hz", 2500.0f, 500.0f, 10000.0f)),
-      lowCutHz_(p.number("low_cut_hz", 150.0f, 20.0f, 1000.0f)),
-      blend_(p.number("blend", 1.0f, 0.0f, 1.0f)),
-      level_(dsp::dbToGain(p.number("level_db", 0.0f, -24.0f, 12.0f))) {}
-
-void Fuzz::prepare(double sr) {
+void Fuzz::allocate(double sr) {
     const double osr = sr * kOversample;
-    // drive 0..1 -> 2x .. about 400x (the pedal is all gain).
-    preGain_ = 2.0f * std::pow(200.0f, drive_);
-    // An asymmetric transistor: the curve is shifted, adding even harmonics.
-    biasOffset_ = 0.4f * bias_;
-    lowCut_.set(Biquad::Type::HighPass, sr, lowCutHz_, 0.707);
     for (int k = 0; k < kFilterStages; ++k) {
         up_[k].set(Biquad::Type::LowPass, osr, 0.38 * sr, kButterworth8Q[k]);
         down_[k].set(Biquad::Type::LowPass, osr, 0.38 * sr, kButterworth8Q[k]);
     }
     octaveDc_.set(Biquad::Type::HighPass, osr, 30.0, 0.707);  // centres the rectified wave
     dcBlock_.set(Biquad::Type::HighPass, sr, 25.0, 0.707);
-    tone_.set(Biquad::Type::LowPass, sr, toneHz_, 0.707);
-    reset();
+}
+
+void Fuzz::update(bool) {
+    const double sr = sampleRate_;
+    // drive 0..1 -> 2x .. about 400x (the pedal is all gain).
+    preGain_ = 2.0f * std::pow(200.0f, param(kDrive));
+    // An asymmetric transistor: the curve is shifted, adding even harmonics.
+    biasOffset_ = 0.4f * param(kBias);
+    lowCut_.set(Biquad::Type::HighPass, sr, param(kLowCut), 0.707);
+    tone_.set(Biquad::Type::LowPass, sr, param(kTone), 0.707);
+    level_ = dsp::dbToGain(param(kLevel));
 }
 
 void Fuzz::reset() {
@@ -48,6 +43,7 @@ void Fuzz::process(float* left, float* right, int frames) {
     // level of a typical sample, so blend and level work around 0 dB.
     constexpr float kFuzzLevel = 0.3f;
     const float clipShift = dsp::fastTanh(biasOffset_);
+    const float octave = param(kOctave), blend = param(kBlend);
     for (int i = 0; i < frames; ++i) {
         const float dry = 0.5f * (left[i] + right[i]);
         const float in = lowCut_.process(dry);
@@ -64,15 +60,15 @@ void Fuzz::process(float* left, float* right, int frames) {
             // centred and squared up a little, as an octave-fuzz pedal's octave circuit.
             const float rect = octaveDc_.process(std::fabs(dsp::fastTanh(4.0f * s)));
             const float oct = dsp::fastTanh(3.0f * rect);
-            float mixed = (1.0f - octave_) * fuzz + octave_ * 1.4f * oct;
+            float mixed = (1.0f - octave) * fuzz + octave * 1.4f * oct;
 
             for (auto& f : down_) mixed = f.process(mixed);
             y = mixed;  // the last sub-sample: decimation
         }
         const float fuzz = tone_.process(dcBlock_.process(y)) * kFuzzLevel;
-        const float wet = blend_ * fuzz * level_;
-        left[i] = (1.0f - blend_) * left[i] + wet;
-        right[i] = (1.0f - blend_) * right[i] + wet;
+        const float wet = blend * fuzz * level_;
+        left[i] = (1.0f - blend) * left[i] + wet;
+        right[i] = (1.0f - blend) * right[i] + wet;
     }
 }
 

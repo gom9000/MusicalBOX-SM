@@ -192,7 +192,7 @@ std::unique_ptr<Program> readProgram(const json& j, const InstrumentStore& store
         if (!j["fx"].is_array()) throw Bad{"\"fx\" must be an array"};
         for (const json& fj : j["fx"]) {
             if (!fj.is_object() || !fj.contains("type")) throw Bad{"every effect needs a \"type\""};
-            jsonutil::checkKeys(fj, {"type", "params", "bypass", "switch"}, where + " fx", warnings);
+            jsonutil::checkKeys(fj, {"type", "params", "bypass", "switch", "cc"}, where + " fx", warnings);
             FxDef fx;
             fx.type = text(fj, "type");
             if (fj.contains("params")) {
@@ -212,6 +212,10 @@ std::unique_ptr<Program> readProgram(const json& j, const InstrumentStore& store
                 fx.switchParam = sw[0].get<std::string>();
                 fx.switchA = sw[1].dump();
                 fx.switchB = sw[2].dump();
+            }
+            if (fj.contains("cc")) {
+                if (!fj["cc"].is_object()) throw Bad{"effect \"cc\" must be an object: { \"parameter\": controller }"};
+                fx.ccJson = fj["cc"].dump();
             }
             program->fx.push_back(std::move(fx));
         }

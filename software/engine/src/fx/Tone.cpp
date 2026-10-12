@@ -4,26 +4,18 @@ namespace mbx {
 
 using dsp::Biquad;
 
-Tone::Tone(FxParams& p)
-    : lowCutHz_(p.number("low_cut_hz", 0.0f, 0.0f, 1000.0f)),
-      bassDb_(p.number("bass_db", 0.0f, -18.0f, 18.0f)),
-      bassHz_(p.number("bass_hz", 120.0f, 30.0f, 500.0f)),
-      midDb_(p.number("mid_db", 0.0f, -18.0f, 18.0f)),
-      midHz_(p.number("mid_hz", 1000.0f, 200.0f, 5000.0f)),
-      trebleDb_(p.number("treble_db", 0.0f, -18.0f, 18.0f)),
-      trebleHz_(p.number("treble_hz", 3500.0f, 1000.0f, 12000.0f)),
-      highCutHz_(p.number("high_cut_hz", 0.0f, 0.0f, 20000.0f)),
-      gain_(dsp::dbToGain(p.number("gain_db", 0.0f, -24.0f, 12.0f))) {}
+void Tone::allocate(double) {}
 
-void Tone::prepare(double sr) {
+void Tone::update(bool) {
+    const double sr = sampleRate_;
     for (auto& c : ch_) {
-        c.lowCut.set(Biquad::Type::HighPass, sr, lowCutHz_ > 0 ? lowCutHz_ : 10.0, 0.707);
-        c.bass.set(Biquad::Type::LowShelf, sr, bassHz_, 0.707, bassDb_);
-        c.mid.set(Biquad::Type::Peak, sr, midHz_, 0.8, midDb_);
-        c.treble.set(Biquad::Type::HighShelf, sr, trebleHz_, 0.707, trebleDb_);
-        c.highCut.set(Biquad::Type::LowPass, sr, highCutHz_ > 0 ? highCutHz_ : 0.45 * sr, 0.707);
+        c.lowCut.set(Biquad::Type::HighPass, sr, param(kLowCut) > 0 ? param(kLowCut) : 10.0, 0.707);
+        c.bass.set(Biquad::Type::LowShelf, sr, param(kBassHz), 0.707, param(kBassDb));
+        c.mid.set(Biquad::Type::Peak, sr, param(kMidHz), 0.8, param(kMidDb));
+        c.treble.set(Biquad::Type::HighShelf, sr, param(kTrebleHz), 0.707, param(kTrebleDb));
+        c.highCut.set(Biquad::Type::LowPass, sr, param(kHighCut) > 0 ? param(kHighCut) : 0.45 * sr, 0.707);
     }
-    reset();
+    gain_ = dsp::dbToGain(param(kGain));
 }
 
 void Tone::reset() {
@@ -34,8 +26,8 @@ void Tone::reset() {
 
 void Tone::process(float* left, float* right, int frames) {
     float* io[2] = {left, right};
-    const bool lowCut = lowCutHz_ > 0, bass = bassDb_ != 0, mid = midDb_ != 0, treble = trebleDb_ != 0,
-               highCut = highCutHz_ > 0;
+    const bool lowCut = param(kLowCut) > 0, bass = param(kBassDb) != 0, mid = param(kMidDb) != 0,
+               treble = param(kTrebleDb) != 0, highCut = param(kHighCut) > 0;
     for (int c = 0; c < 2; ++c) {
         Channel& ch = ch_[c];
         float* x = io[c];

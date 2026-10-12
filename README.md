@@ -6,7 +6,7 @@
 
 ## Features
 - **Real-Time C++20 Engine**: Low latency audio processing with voice management, ADSR envelopes, sample looping, and velocity mapping.
-- **Integrated Effects Chain**: Built-in effects per program (`leslie`, `fuzz`, `chorus`, `phaser`, `echo`, `room`, `tone`, `width`, `tremolo`, plus the organ `motor`) featuring dynamic parameters and live switching.
+- **Integrated Effects Chain**: Built-in effects per program (`leslie`, `fuzz`, `chorus`, `phaser`, `echo`, `room`, `tone`, `width`, `tremolo`, plus the organ `motor`) featuring parameters that change while playing (switch, MIDI controllers, web editor) without cutting tails.
 - **MIDI Connectivity**: Native support for USB MIDI controllers and hardware MIDI DIN interfaces via the Raspberry Pi dedicated UART. Notes, sustain, pitch bend, Program Change, all sound off / all notes off.
 - **Integrated Web Editor**: Mobile-friendly configuration interface accessible over Wi-Fi (via the Pi local access point) to tweak presets, programs, layers, and effects on the fly.
 - **Samples**: Supports 8, 16, 24, or 32-bit WAV files (mono or stereo) at any sample rate, utilizing loop points. Multiple velocity layers per note are supported via numbers or labels in filenames.
@@ -178,6 +178,7 @@ Each program features an ordered effects chain applied to the summed output of i
 - Out-of-bounds parameter values are automatically clamped with a warning message.
 - `"bypass": true` temporarily disables an effect without removing it.
 - During program changes, active notes are truncated and previous effects (including echo/reverb tails) fade out smoothly over 30 ms to prevent audio clicks.
+- Parameters change while playing: the switch, MIDI controllers, the control socket and the web editor all move the values of the effects already sounding, so echo and reverb tails, modulation phases and rotor speeds go on. A number glides to its new value in 30 ms.
 
 ```json
 "fx": [
@@ -203,7 +204,8 @@ Each program features an ordered effects chain applied to the summed output of i
 Effects can define a `switch`: a parameter that toggles between two distinct values each time the physical footswitch (or web UI button / console `w` command) is pressed.
 - The initial value is active when the program is loaded.
 - A single press simultaneously switches all switchable parameters within the program.
-- Any parameter can be automated via switch, including `bypass`.
+- Any parameter can be automated via switch, including `bypass` (a 30 ms cross-fade to the dry sound).
+- A few parameters set the structure of an effect and cannot move while it plays: chorus `mode`, phaser `stages`, echo `ping_pong`, tremolo `shape`. A switch on one of them cross-fades between two versions of the effect in 30 ms.
 
 ```json
 "fx": [
@@ -224,6 +226,20 @@ Switched off and on from the footswitch, like the motor of an electromechanical 
 ```
 
 When a program is selected, its motor takes the first switch value (normally `"on"`).
+
+### Live controls
+Effect parameters can follow MIDI controllers (knobs, faders, pedals of the master keyboard or of any MIDI controller) with `cc` next to `params`:
+
+```json
+{ "type": "echo", "params": { "time_ms": 300 }, "cc": { "mix": 21, "feedback": [22, 0.1, 0.6], "bypass": 23 } }
+```
+
+- A controller number alone uses the whole range of the parameter; `[controller, min, max]` limits it. Frequencies follow a logarithmic scale.
+- Choices and true/false parameters (`speed`, `state`, `stereo`) and `bypass` split the controller in two halves (or in as many parts as the options).
+- Controllers 0–119, except 64 (sustain). The parameters that set the structure of an effect (see Switch) cannot be controlled.
+- On every program change the parameters go back to the values in `params`.
+
+The same control is available from the control socket (for a custom controller handled by a script): `{"cmd": "param", "fx": 2, "param": "mix", "value": 0.4}`, where `fx` is the number of the effect in the program (1 = first) and `value` a number, a word or true/false as in `params`.
 
 
 ## Raspberry Pi Installation

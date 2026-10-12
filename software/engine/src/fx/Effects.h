@@ -1,7 +1,7 @@
 #pragma once
 
-// The effects of MusicalBOX SM. Each one reads its parameters from the
-// "params" object in programs.json (see README, "Effetti", for the list).
+// The effects of MusicalBOX SM. The parameters of each type, with defaults
+// and ranges, are in Effect.cpp (and in README, "Effects").
 
 #include "fx/Dsp.h"
 #include "fx/Effect.h"
@@ -13,13 +13,16 @@ namespace mbx {
 // Equaliser: low cut, bass shelf, mid peak, treble shelf, high cut, output gain.
 class Tone : public Effect {
 public:
-    explicit Tone(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kLowCut, kBassDb, kBassHz, kMidDb, kMidHz, kTrebleDb, kTrebleHz, kHighCut, kGain };
     void reset() override;
+
+protected:
+    void allocate(double sampleRate) override;
+    void update(bool immediate) override;
     void process(float* left, float* right, int frames) override;
 
 private:
-    float lowCutHz_, bassDb_, bassHz_, midDb_, midHz_, trebleDb_, trebleHz_, highCutHz_, gain_;
+    float gain_ = 1.0f;
     struct Channel {
         dsp::Biquad lowCut, bass, mid, treble, highCut;
     };
@@ -30,14 +33,15 @@ private:
 // slight wow and flutter. Optional ping-pong between left and right.
 class TapeEcho : public Effect {
 public:
-    explicit TapeEcho(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kTime, kFeedback, kMix, kTone, kLowCut, kWow, kDrive, kPingPong };
     void reset() override;
+
+protected:
+    void allocate(double sampleRate) override;
+    void update(bool immediate) override;
     void process(float* left, float* right, int frames) override;
 
 private:
-    float timeMs_, feedback_, mix_, toneHz_, lowCutHz_, wow_, drive_;
-    bool pingPong_;
     float delaySamples_ = 0.0f, wowDepth_ = 0.0f, flutterDepth_ = 0.0f;
     std::array<dsp::DelayLine, 2> line_;
     std::array<dsp::Biquad, 2> dark_, thin_;
@@ -49,14 +53,16 @@ private:
 // and a fast modulation, the string-ensemble chorus.
 class Chorus : public Effect {
 public:
-    explicit Chorus(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kMode, kRate, kDepth, kMix };
     void reset() override;
+
+protected:
+    void allocate(double sampleRate) override;
+    void update(bool immediate) override;
     void process(float* left, float* right, int frames) override;
 
 private:
-    bool ensemble_;
-    float rateHz_, depth_, mix_;
+    bool ensemble_ = false;
     float baseDelay_ = 0.0f, slowDepth_ = 0.0f, fastDepth_ = 0.0f, makeup_ = 1.0f;
     std::array<dsp::DelayLine, 2> line_;
     std::array<dsp::OnePole, 2> dark_;
@@ -67,17 +73,17 @@ private:
 // LFO, mixed 50/50 with the dry signal, with optional feedback.
 class Phaser : public Effect {
 public:
-    explicit Phaser(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kRate, kDepth, kFeedback, kMix, kStages, kStereo };
     void reset() override;
+
+protected:
+    void allocate(double sampleRate) override;
+    void update(bool immediate) override;
     void process(float* left, float* right, int frames) override;
 
 private:
     static constexpr int kMaxStages = 12;
-    float rateHz_, depth_, feedback_, mix_;
-    int stages_;
-    bool stereo_;
-    double sampleRate_ = 48000.0;
+    int stages_ = 4;
     float makeup_ = 1.0f;
     struct Channel {
         std::array<float, kMaxStages> x1{}, y1{};
@@ -96,17 +102,18 @@ private:
 // "cabinet" adds what the microphones hear besides the direct sound: the
 // rotors bounce off the cabinet walls, the floor and the room, and every
 // reflection sees the rotor from another angle. That is what makes a
-// recorded Leslie wide and swirling instead of a left-right ping-pong.
+// recorded rotating speaker wide and swirling instead of a left-right ping-pong.
 // "top_hz" is the treble limit of the horn and the recording.
+// A speed change makes the rotors speed up and slow down like a real cabinet.
 class Leslie : public Effect {
 public:
-    explicit Leslie(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kSpeed, kDepth, kSpread, kDrive, kMix, kCabinet, kTop };
     void reset() override;
+
+protected:
+    void allocate(double sampleRate) override;
+    void update(bool immediate) override;
     void process(float* left, float* right, int frames) override;
-    // "speed" can be switched: the rotors speed up and slow down like a real cabinet.
-    bool configureSwitch(const std::string& param, const nlohmann::json& a, const nlohmann::json& b) override;
-    void setSwitch(bool positionB, bool immediate) override;
 
 private:
     static constexpr int kReflections = 7;
@@ -119,13 +126,8 @@ private:
     float reflections(const dsp::DelayLine& line, float base, float doppler, float am, float s, float c,
                       float direction, int mic) const;
 
-    bool fast_;
-    bool switchable_ = false;
-    bool fastA_ = false, fastB_ = true;
     float hornHz_ = 0.0f, drumHz_ = 0.0f, hornTarget_ = 0.0f, drumTarget_ = 0.0f;
     float hornUp_ = 0.0f, hornDown_ = 0.0f, drumUp_ = 0.0f, drumDown_ = 0.0f;  // per-sample coefficients
-    float depth_, spread_, drive_, mix_, cabinet_, topHz_;
-    double sampleRate_ = 48000.0;
     dsp::Biquad lowA_, lowB_, highA_, highB_;  // Linkwitz-Riley 4th order
     dsp::DelayLine horn_, drum_;
     dsp::Lfo hornLfo_, drumLfo_;
@@ -142,17 +144,19 @@ private:
 
 // Small room: a decorrelated stereo reverb (feedback delay network, 8 lines)
 // added to the dry sound. Gives space and width to a mono source; with a
-// Leslie, it is the room around the cabinet.
+// rotating speaker, it is the room around the cabinet.
 class Room : public Effect {
 public:
-    explicit Room(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kLevel, kTime, kDamp, kPredelay, kLowCut };
     void reset() override;
+
+protected:
+    void allocate(double sampleRate) override;
+    void update(bool immediate) override;
     void process(float* left, float* right, int frames) override;
 
 private:
     static constexpr int kLines = 8;
-    float level_, timeS_, dampHz_, predelayMs_, lowCutHz_;
     float predelay_ = 0.0f;
     dsp::DelayLine pre_;
     dsp::Biquad lowCut_;
@@ -167,16 +171,18 @@ private:
 // runs at 4x the sample rate so that hard clipping does not alias.
 class Fuzz : public Effect {
 public:
-    explicit Fuzz(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kDrive, kOctave, kBias, kTone, kLowCut, kBlend, kLevel };
     void reset() override;
+
+protected:
+    void allocate(double sampleRate) override;
+    void update(bool immediate) override;
     void process(float* left, float* right, int frames) override;
 
 private:
     static constexpr int kOversample = 4;
     static constexpr int kFilterStages = 4;  // 8th-order Butterworth around the clipper
-    float drive_, octave_, bias_, toneHz_, lowCutHz_, blend_, level_;
-    float preGain_ = 1.0f, biasOffset_ = 0.0f;
+    float preGain_ = 1.0f, biasOffset_ = 0.0f, level_ = 1.0f;
     dsp::Biquad lowCut_, octaveDc_, dcBlock_, tone_;
     std::array<dsp::Biquad, kFilterStages> up_, down_;
 };
@@ -186,13 +192,15 @@ private:
 // L + R stays exactly the dry signal, so nothing changes on a mono PA.
 class Width : public Effect {
 public:
-    explicit Width(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kAmount, kTime, kLowCut };
     void reset() override;
+
+protected:
+    void allocate(double sampleRate) override;
+    void update(bool immediate) override;
     void process(float* left, float* right, int frames) override;
 
 private:
-    float amount_, timeMs_, lowCutHz_;
     float delaySamples_ = 0.0f;
     dsp::DelayLine line_;
     dsp::Biquad lowCut_;
@@ -201,15 +209,15 @@ private:
 // Tremolo (amplitude modulation); "stereo" makes it a pan tremolo.
 class Tremolo : public Effect {
 public:
-    explicit Tremolo(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kRate, kDepth, kShape, kStereo };
     void reset() override;
+
+protected:
+    void allocate(double sampleRate) override;
+    void update(bool immediate) override;
     void process(float* left, float* right, int frames) override;
 
 private:
-    float rateHz_, depth_;
-    int shape_;  // 0 sine, 1 triangle, 2 square (rounded)
-    bool stereo_;
     float makeup_ = 1.0f;
     dsp::Lfo lfo_;
 };
@@ -217,26 +225,24 @@ private:
 // The motor of an electromechanical organ: not an audio effect but the speed
 // of the program's voices. "off" slows every note down to silence (pitch and
 // level fall together, as tonewheels and their pickups), "on" brings them back
-// up, each move starting from the current speed. Its switch parameter is
-// "state" ("on"/"off"); the engine reads speed() for the voices.
+// up, each move starting from the current speed. The engine reads speed().
 class Motor : public Effect {
 public:
-    explicit Motor(FxParams& p);
-    void prepare(double sampleRate) override;
+    enum { kState, kStop, kStart };
     void reset() override;
-    void process(float*, float*, int) override {}  // the sound passes unchanged
-    bool configureSwitch(const std::string& param, const nlohmann::json& a, const nlohmann::json& b) override;
-    void setSwitch(bool positionB, bool immediate) override;
 
     float speed() const { return speed_; }  // 0 = stopped, 1 = running
     float advance(int frames);              // audio thread: moves towards the target, returns the new speed
 
+protected:
+    void allocate(double) override {}
+    void update(bool immediate) override;
+    void process(float*, float*, int) override {}  // the sound passes unchanged
+
 private:
-    float stopS_, startS_;
-    bool onA_ = true, onB_ = false;
-    bool running_ = true;                   // target
+    bool running_ = true;
     float speed_ = 1.0f;
-    float down_ = 0.0f, up_ = 0.0f;         // speed change per sample
+    float down_ = 0.0f, up_ = 0.0f;  // speed change per sample
 };
 
 } // namespace mbx
